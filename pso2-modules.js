@@ -75,9 +75,9 @@ let processRequest = function(name, num, ext, exact, fix, callback) {
                     callback("not null");
                     return;
                 }
-                let inputFilePath = `${destinationFolder}${num}\\${ice}_ext\\${exactFilename}`;
+                let inputFilePath = `${destinationFolder}\\${num}\\${ice}_ext\\${exactFilename}`;
                 let extension = exactFilename.split('.')[exactFilename.split('.').length - 1];
-                let outputPath = `${destinationFolder}${num}`;
+                let outputPath = `${destinationFolder}\\${num}`;
                 switch (extension) {
                     case "cml": {
                         processConversionCml(inputFilePath, outputPath, ext, fix, uploadFile, callback);
