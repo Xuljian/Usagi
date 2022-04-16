@@ -60,12 +60,12 @@ let processRequest = function(name, num, ext, exact, fix, callback) {
     if (foundString != null) {
         let exactFilename = foundString.split('\\')[1];
         let ice = foundString.split('\\')[0];
-        fs.copyFile(`${pso2win32Path}\\${ice}`, `${destinationFolder}${num}\\${ice}`, (err) => {
+        fs.copyFile(`${pso2win32Path}\\${ice}`, `${destinationFolder}\\${num}\\${ice}`, (err) => {
             if (err) {
                 callback(null);
                 return;
             }
-            let command = `${destinationFolder}\\ice.exe -o ${destinationFolder}${num}\\${ice}_ext ${destinationFolder}${num}\\${ice}`;
+            let command = `${destinationFolder}\\ice.exe -o ${destinationFolder}\\${num}\\${ice}_ext ${destinationFolder}\\${num}\\${ice}`;
             executor.exec(command, (subSubErr, res) => {
                 if (subSubErr) {
                     callback("not null");
@@ -181,8 +181,8 @@ setInterval(() => {
             return;
         }
         let num = int++;
-        cleanup(`${destinationFolder}${num}`, () => {
-            fs.mkdirSync(`${destinationFolder}${num}`);
+        cleanup(`${destinationFolder}\\${num}`, () => {
+            fs.mkdirSync(`${destinationFolder}\\${num}`);
             processRequest(dat.name, num, dat.ext, dat.exact, dat.fix, dat.callback);
             isReady = true;
         })
