@@ -1,5 +1,7 @@
 exports.pso2ModulesReady = false;
 
+require('./process-output-file').processOutput();
+
 const fs = require('fs');
 const { USAGI_CONSTANT } = require('./usagi.constants');
 
@@ -142,7 +144,7 @@ let processConversionCml = function(inputFilePath, outputPath, extension, fix, c
     }
     let exactFilename = inputFilePath.split('\\')[inputFilePath.split('\\').length - 1];
     let filename = exactFilename.split('.')[0];
-    let command = `${destinationFolder}\\PSO2SalonTool.exe -o ${outputPath} -ext ${extension} ${inputFilePath}${fix ? ' -na': ''}`;
+    let command = `\"${destinationFolder}\\SalonTool\\NGS Salon Tool.exe\" -o ${outputPath}\\${filename}.${extension} -ext ${extension} -i ${inputFilePath} ${fix ? '-na': ''} -cli`;
     executor.exec(command, (subSubErr, res) => {
         if (subSubErr) {
             callback({

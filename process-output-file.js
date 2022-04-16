@@ -6,16 +6,24 @@ const pathToFinalFile = `${USAGI_CONSTANT.BOT_DUMP_PATH}\\ice_mapped_list.json`;
 exports.processOutput = function() {
     if (fs.existsSync(pathToOutput)) {
         let finalFileList = [];
-        let regex = new RegExp('.*pso2_bin\\\\data\\\\(?:win32|win32reboot)\\\\([A-Za-z0-9]{32})_ext.*(\\\\\\w{0,}\\.\\w{0,5})');
+        let pathRegex = new RegExp('(?:win32|win32reboot)\\\\([A-Za-z0-9]{32}) ICE');
+        let filenameRegex = new RegExp('(\\w{0,}\\.\\w{0,5})');
         let readString = fs.readFileSync(pathToOutput, 'utf-8');
-        let fileList = readString.split('\n');
+        let fileList = readString.split('\r\n');
         if (fileList.length > 0) {
+            let currentIce = null;
             fileList.forEach((line) => {
-                let executedLineResult = regex.exec(line);
-                if (executedLineResult == null) {
+                line = line.trim();
+                let executedLineResult = pathRegex.exec(line);
+                if (executedLineResult != null) {
+                    currentIce = executedLineResult[1];
                     return;
+                } else {
+                    executedLineResult = filenameRegex.exec(line);
+                    if (executedLineResult != null && currentIce != null) {
+                        finalFileList.push(`${currentIce}\\${executedLineResult[1]}`)
+                    }
                 }
-                finalFileList.push(`${executedLineResult[1]}${executedLineResult[2]}`)
             })
         }
         fs.writeFileSync(pathToFinalFile, JSON.stringify(finalFileList, null, 4), 'utf8');
