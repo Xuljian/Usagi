@@ -1024,7 +1024,7 @@ var mainProcess = function () {
                               '\`\`\`First is:\n' +
                               `${prefix}emoji <emojiname>, this command is for adding emoji, the <emojiname> is for you to name the emoji that you want to add and most importantly make sure you upload the emoji image too when using this comamnd\n` +
                               'Second is:\n' +
-                              `${prefix}emoji delete <emoji>, this command is to delete the emoji, <emoji> is just the emoji you want to delete\n\`\`\``
+                              `${prefix}emoji delete <emoji>, this command is to delete the emoji, <emoji> is just the emoji you want to delete. If you do not have nitro and you need to delete the emoji, you have to get the id of the emoji and type ::id of the emoji in place of <emoji> to delete it\n\`\`\``
             restActions.sendMessage({
                 channelId: data.channel_id,
                 embed: {
@@ -1040,7 +1040,11 @@ var mainProcess = function () {
             if (splitSecondArg.length != 3) {
                 invalidCommands(data);
             }
-            let emojiId = splitSecondArg[2].substring(0, splitSecondArg[2].length - 1);
+            let valueToKill = 0;
+            if (splitSecondArg[2].indexOf('>') > -1) {
+                valueToKill = 1;
+            }
+            let emojiId = splitSecondArg[2].substring(0, splitSecondArg[2].length - valueToKill);
             if(!isNaN(parseInt(emojiId))) {
                 restActions.deleteEmoji(data.guild_id, emojiId, (response, callbackParams) => {
                     if (callbackParams.emojiId == emojiId && callbackParams.guildId == data.guild_id) {
@@ -1068,10 +1072,14 @@ var mainProcess = function () {
                         guildId: data.guild_id,
                         messageId: data.id,
                         callback: (data, options) => {
+                            let emojiStringPrefix = ':';
+                            if (mimeMapping[o.mime] == 'gif') {
+                                emojiStringPrefix = 'a:';
+                            }
                             if (data.id != null) {
                                 restActions.sendMessage({
                                     channelId: options.channelId,
-                                    message: `Emoji added <:${data.name}:${data.id}>`
+                                    message: `Emoji added <${emojiStringPrefix}${data.name}:${data.id}>`
                                 })
                             }
                         }
