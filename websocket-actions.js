@@ -3,6 +3,7 @@ const { USAGI_CONSTANT } = require("./usagi.constants");
 
 const pso2Modules = require('./pso2-modules');
 const cronJob = require('./cron-job');
+const moment = require('moment');
 
 const messageLog = [];
 
@@ -28,6 +29,9 @@ var mainProcess = function () {
     const fs = require('fs');
 
     const prefix = '#!';
+
+    var messageLogs = [];
+    var messageIndex = [];
 
     var validMimes = [
         'image/jpeg',
@@ -286,11 +290,158 @@ var mainProcess = function () {
                 }
                 break;
             }
+            case 'MESSAGE_UPDATE': {
+                var usableData = data.d;
+
+                let channelId = tempRepositoryFunc.archiveChannel(usableData.guild_id);
+                if (channelId == null) return;
+
+                let messageIndex = messageLogs.findIndex(o => o.id == usableData.id);
+                if (messageIndex == -1) return;
+
+                let message = messageLogs[messageIndex];
+
+                let description = '**Edited message\n\n**' +
+                                    `Message: ${message.content}\n` +
+                                    `New Message: ${usableData.content}\n` +
+                                    `Go to message: https://discord.com/channels/${usableData.guild_id}/${usableData.channel_id}/${usableData.id}\n` +
+                                    `By: <@${usableData.author.id}>\n` +
+                                    `Channel: <#${message.channel_id}>\n`
+                restActions.sendMessage({
+                    channelId: channelId,
+                    embed: {
+                        color: 16731558,
+                        description: description
+                    }
+                });
+                message.content = usableData.content;
+                break;
+            }
+            case 'MESSAGE_DELETE': {
+                var usableData = data.d;
+
+                let channelId = tempRepositoryFunc.archiveChannel(usableData.guild_id);
+                if (channelId == null || usableData.channel_id == channelId) return;
+
+                let messageIndex = messageLogs.findIndex(o => o.id == usableData.id);
+                if (messageIndex == -1) return;
+
+                let message = messageLogs[messageIndex];
+
+                let description = '**Deleted message\n\n**' +
+                                    `Message: ${message.content}\n` +
+                                    `By: <@${message.author.id}>\n` +
+                                    `Channel: <#${message.channel_id}>\n`;
+                let messageData = null;
+
+                if (message.attachments != null && message.attachments.length > 0) {
+                    try
+                    {
+                        let stopProcessing1 = false;
+                        let attachmentBuffer = [];
+                        message.attachments.forEach(attachment => {
+                            restActions.getImage(attachment.url, (buffer) => {
+                                if(stopProcessing1) return;
+                                attachmentBuffer.push(buffer);
+                            })
+                        })
+                        let startWait = moment();
+                        let interval = setInterval(() => {
+                            if (Object.keys(attachmentBuffer).length != message.attachments.length && moment().diff(startWait) < 120000) {
+                                return;
+                            }
+                            clearInterval(interval);
+                            try
+                            {
+                                stopProcessing1 = true;
+                            
+                                let counter = 0;
+                                messageData = {
+                                    channelId: channelId,
+                                    content: new FormData()
+                                }
+
+                                messageData.content.append('payload_json', JSON.stringify({
+                                    embed: {
+                                        color: 16731558,
+                                        description: description
+                                    }
+                                }));
+
+                                let stopProcessing2 = false;
+                                let passes = 0;
+                                let valid = 0;
+                                attachmentBuffer.forEach((buffer) => {
+                                    fileType.fromBuffer(buffer).then((o) => {
+                                        if(stopProcessing2) return;
+                                        if (validMimes.indexOf(o.mime) > -1) {
+                                            messageData.content.append(`${counter}`, buffer, {
+                                                filename: `${counter}.${mimeMapping[o.mime]}`
+                                            });
+                                            counter++;
+                                            valid++;
+                                        }
+                                        passes++;
+                                    })
+                                })
+                                startWait = moment();
+                                interval = setInterval(() => {
+                                    if (Object.keys(attachmentBuffer).length != passes && moment().diff(startWait) < 60000) {
+                                        return;
+                                    }
+                                    clearInterval(interval);
+                                    stopProcessing2 = true;
+                                    if (valid == 0) {
+                                        restActions.sendMessage({
+                                            channelId: channelId,
+                                            embed: {
+                                                color: 16731558,
+                                                description: description
+                                            }
+                                        });
+                                        return;
+                                    }
+                                    restActions.sendMessageComplex(messageData);
+                                    messageLogs.splice(messageIndex, 1);
+                                }, 500)
+                            } catch {
+                                restActions.sendMessage({
+                                    channelId: channelId,
+                                    embed: {
+                                        color: 16731558,
+                                        description: description
+                                    }
+                                });
+                            }
+                        }, 500);
+                        
+                    } catch {
+                        restActions.sendMessage({
+                            channelId: channelId,
+                            embed: {
+                                color: 16731558,
+                                description: description
+                            }
+                        });
+                    }
+                } else {
+                    restActions.sendMessage({
+                        channelId: channelId,
+                        embed: {
+                            color: 16731558,
+                            description: description
+                        }
+                    });
+                }
+                break;
+            }
             case 'MESSAGE_CREATE': {
                 let usableData = data.d;
+                
+                cleanupAndStoreToCache(usableData);
 
                 reactToMessage(usableData);
-                logImage(usableData);
+                // logImage(usableData);
 
                 if (usableData.guild_id == null) {
                     if (!checkIgnore(usableData.channel_id)) {
@@ -314,6 +465,25 @@ var mainProcess = function () {
                 //console.log(data)
                 break;
             }
+        }
+    }
+
+    var cleanupAndStoreToCache = function(usableData) {
+        if (usableData.author?.bot == true) return;
+        let localJSON = JSON.parse(JSON.stringify(usableData));
+        delete localJSON['timestamp'];
+        delete localJSON['referenced_message'];
+        delete localJSON['pinned'];
+        delete localJSON['nonce'];
+        delete localJSON['mentions'];
+        delete localJSON['mention_roles'];
+        delete localJSON['mention_everyone'];
+        delete localJSON['flag'];
+        delete localJSON['embeds'];
+        delete localJSON['components'];
+        messageLogs.push(localJSON);
+        if (messageLogs.length > 100000) {
+            messageLogs.shift();
         }
     }
 
@@ -350,13 +520,10 @@ var mainProcess = function () {
     }
 
     var checkIgnore = function (id) {
-        let result = false;
-        realTimeRepository.channelIgnore.forEach(o => {
-            if (!result && o == id) {
-                result = true;
-            }
+        let result = realTimeRepository.channelIgnore.findIndex(o => {
+            return o == id;
         })
-        return result;
+        return result >= 0;
     }
 
     var reactToMessage = function (usableData) {
