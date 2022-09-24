@@ -2,17 +2,19 @@ exports.pso2ModulesReady = false;
 
 require('./process-output-file').processOutput();
 
-const fs = require('fs');
-const { USAGI_CONSTANT } = require('./usagi.constants');
+let tempfs = require('fs');
+let fs = tempfs.promises;
+
+const { USAGI_CONSTANTS } = require('./usagi.constants');
 
 const allowSearchExtension = ['acb', 'cml'];
 
-const destinationFolder = USAGI_CONSTANT.BOT_DUMP_PATH;
+const destinationFolder = USAGI_CONSTANTS.BOT_DUMP_PATH;
 const pathToList = `${destinationFolder}\\ice_mapped_list.json`;
 
 const pso2win32Path = 'C:\\PHANTASYSTARONLINE2_JP\\pso2_bin\\data\\win32';
 
-let readString = fs.readFileSync(pathToList, 'utf-8');
+let readString = tempfs.readFileSync(pathToList, 'utf-8');
 let fileMap = JSON.parse(readString);
 
 let regexExtensions = allowSearchExtension.join('|');
@@ -48,7 +50,7 @@ exports.getPayload = function(name, ext, exact, fix, callback) {
     })
 }
 
-let processRequest = function(name, num, ext, exact, fix, callback) {
+let processRequest = async function(name, num, ext, exact, fix, callback) {
     const executor = require('child_process');
     let regex = new RegExp(`^.*\\.*${name}.*\.(${regexExtensions})$`);
     if (exact) {
@@ -60,76 +62,75 @@ let processRequest = function(name, num, ext, exact, fix, callback) {
     if (foundString != null) {
         let exactFilename = foundString.split('\\')[1];
         let ice = foundString.split('\\')[0];
-        fs.copyFile(`${pso2win32Path}\\${ice}`, `${destinationFolder}\\${num}\\${ice}`, (err) => {
-            if (err) {
-                callback(null);
+        try {
+            await fs.copyFile(`${pso2win32Path}\\${ice}`, `${destinationFolder}\\${num}\\${ice}`);
+        } catch (e) {
+            callback(null);
+        }
+        
+        let command = `${destinationFolder}\\ice.exe -o ${destinationFolder}\\${num}\\${ice}_ext ${destinationFolder}\\${num}\\${ice}`;
+        executor.exec(command, async (subSubErr, res) => {
+            if (subSubErr) {
+                callback("not null");
                 return;
             }
-            let command = `${destinationFolder}\\ice.exe -o ${destinationFolder}\\${num}\\${ice}_ext ${destinationFolder}\\${num}\\${ice}`;
-            executor.exec(command, (subSubErr, res) => {
-                if (subSubErr) {
-                    callback("not null");
-                    return;
+            if (res.indexOf('FAILED') > -1) {
+                callback("not null");
+                return;
+            }
+            let inputFilePath = `${destinationFolder}\\${num}\\${ice}_ext\\${exactFilename}`;
+            let extension = exactFilename.split('.')[exactFilename.split('.').length - 1];
+            let outputPath = `${destinationFolder}\\${num}`;
+            switch (extension) {
+                case "cml": {
+                    processConversionCml(inputFilePath, outputPath, ext, fix, uploadFile, callback);
+                    break;
                 }
-                if (res.indexOf('FAILED') > -1) {
-                    callback("not null");
-                    return;
+                default: {
+                    await uploadFile({
+                        cleanupPath: outputPath,
+                        newPath: inputFilePath,
+                        newExtension: extension
+                    }, callback)
+                    break;
                 }
-                let inputFilePath = `${destinationFolder}\\${num}\\${ice}_ext\\${exactFilename}`;
-                let extension = exactFilename.split('.')[exactFilename.split('.').length - 1];
-                let outputPath = `${destinationFolder}\\${num}`;
-                switch (extension) {
-                    case "cml": {
-                        processConversionCml(inputFilePath, outputPath, ext, fix, uploadFile, callback);
-                        break;
-                    }
-                    default: {
-                        uploadFile({
-                            cleanupPath: outputPath,
-                            newPath: inputFilePath,
-                            newExtension: extension
-                        }, callback)
-                        break;
-                    }
-                }
-            })
-        });
+            }
+        })
     } else {
         callback(null);
     }
 }
 
-let uploadFile = function(subDat, callback) {
+let uploadFile = async function(subDat, callback) {
     if (subDat.error) {
         callback("not null");
-        cleanup(subDat.cleanupPath);
+        await cleanup(subDat.cleanupPath);
     } else {
         let exactFilename = subDat.newPath.split('\\')[subDat.newPath.split('\\').length - 1];
         let filename = exactFilename.split('.')[0];
-        fs.readFile(subDat.newPath, (subSubSubErr, data) => {
-            if (subSubSubErr) {
-                callback("not null");
-                cleanup(subDat.cleanupPath);
-                return;
-            }
-            callback({
-                buffer: data,
-                filename: filename,
-                extension: subDat.newExtension
-            });
-            cleanup(subDat.cleanupPath);
-        })
+        try {
+            await fs.readFile(subDat.newPath);
+        } catch (e) {
+            callback("not null");
+            await cleanup(subDat.cleanupPath);
+            return;
+        }
+    
+        callback({
+            buffer: data,
+            filename: filename,
+            extension: subDat.newExtension
+        });
+        await cleanup(subDat.cleanupPath);
     }
 }
 
-let cleanup = function(cleanupPath, callback) {
-    fs.rmdir(`${cleanupPath}`, {
+let cleanup = async function(cleanupPath, callback) {
+    await fs.rmdir(`${cleanupPath}`, {
         maxRetries: 10,
         retryDelay: 500,
         recursive: true
-    }, (callback || (() => {
-
-    })))
+    })
 }
 
 let processConversionCml = function(inputFilePath, outputPath, extension, fix, callback, mainCallback) {
@@ -172,19 +173,18 @@ let processConversionCml = function(inputFilePath, outputPath, extension, fix, c
 
 let isReady = true;
 
-setInterval(() => {
+setInterval(async () => {
     if (isReady) {
         isReady = false;
         let dat = queue.shift();
-        if (dat == null){
+        if (dat == null) {
             isReady = true;
             return;
         }
         let num = int++;
-        cleanup(`${destinationFolder}\\${num}`, () => {
-            fs.mkdirSync(`${destinationFolder}\\${num}`);
-            processRequest(dat.name, num, dat.ext, dat.exact, dat.fix, dat.callback);
-            isReady = true;
-        })
+        await cleanup(`${destinationFolder}\\${num}`);
+        await fs.mkdir(`${destinationFolder}\\${num}`);
+        await processRequest(dat.name, num, dat.ext, dat.exact, dat.fix, dat.callback);
+        isReady = true;
     }
 }, 500);

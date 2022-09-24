@@ -1,19 +1,14 @@
 const restAPIUrl = 'https://discord.com/api/v8';
 
-const usagiConstant = require('./usagi.constants').USAGI_CONSTANT;
+const usagiConstant = require('./usagi.constants').USAGI_CONSTANTS;
 
-const authorId = '154106804413005825';
-
-const realTimeRepository = require('./temp-repository').realTimeRepository;
 const repo = require('./temp-repository');
+const realTimeRepository = repo.realTimeRepository;
 
 const https = require('https');
 
 const agent = new https.Agent({ keepAlive: true })
-const fetch = require('node-fetch');
-
-const sharp = require('sharp');
-const FormData = require('form-data');
+const fetch = require('node-fetch').default;
 
 // objects in this queue looks like the object below
 //{
@@ -59,6 +54,7 @@ exports.sendDMById = function (messageObj) {
 
 // messageObj
 //{
+//    guildId: 'string'
 //    channelId: 'string'
 //    embed: { 
 //      title: 'string',
@@ -74,6 +70,7 @@ exports.sendMessage = function (messageObj) {
     let subOptions = {
         url: restAPIUrl + `/channels/${messageObj.channelId}/messages`,
         method: 'post',
+        guildId: messageObj.guildId,
         body: JSON.stringify({
             content: messageObj.message,
             message_reference: messageObj.messageReference,
@@ -87,6 +84,7 @@ exports.sendMessage = function (messageObj) {
 exports.refreshGuildDetails = function (guildId, callback) {
     let subOptions = {
         url: restAPIUrl + `/guilds/${guildId}`,
+        guildId: guildId,
         method: 'get',
         callback: callback
     }
@@ -94,6 +92,7 @@ exports.refreshGuildDetails = function (guildId, callback) {
 }
 
 //{
+//    guildId: 'string'
 //    channelId: 'string',
 //    messageId: 'string',
 //    emoji: 'string'
@@ -102,6 +101,7 @@ exports.reactToMessage = function (options) {
     let subOptions = {
         url: restAPIUrl + `/channels/${options.channelId}/messages/${options.messageId}/reactions/${options.emoji}/@me`,
         method: 'put',
+        guildId: options.guildId,
         ignoreResult: true
     }
     queue.push(subOptions);
@@ -111,6 +111,7 @@ exports.refreshGuildMembers = function (guildId, callback) {
     let subOptions = {
         url: restAPIUrl + `/guilds/${guildId}/members?limit=1000`,
         method: 'get',
+        guildId: guildId,
         callback: callback,
         callbackParams: guildId
     }
@@ -119,6 +120,7 @@ exports.refreshGuildMembers = function (guildId, callback) {
 
 exports.deleteMessage = function(channelId, messageId) {
     let subOptions = {
+        guildId: guildId,
         url: restAPIUrl + `/channels/${channelId}/messages/${messageId}`,
         method: 'delete',
         ignoreResult: true
@@ -129,6 +131,7 @@ exports.deleteMessage = function(channelId, messageId) {
 exports.registerEmoji = function(options) {
     let subOptions = {
         url: restAPIUrl + `/guilds/${options.guildId}/emojis`,
+        guildId: options.guildId,
         method: 'post',
         callback: (data, options) => {
             delete options.image;
@@ -147,6 +150,7 @@ exports.deleteEmoji = function(guildId, emojiId, callback) {
     let subOptions = {
         url: restAPIUrl + `/guilds/${guildId}/emojis/${emojiId}`,
         method: 'delete',
+        guildId: guildId,
         callback: callback,
         isComplex: true,
         body: {
@@ -176,6 +180,7 @@ exports.sendMessageComplex = function (messageObj) {
     }
 
     let subOptions = {
+        guildId: messageObj.guildId,
         url: restAPIUrl + `/channels/${messageObj.channelId}/messages`,
         method: 'post',
         body: messageObj.content,
@@ -195,6 +200,7 @@ exports.sendMessageComplex = function (messageObj) {
 exports.kickUser = function (obj) {
     if (repo.userAllowKick(obj.guildId, obj.executorId)) {
         let subOptions = {
+            guildId: obj.guildId,
             url: restAPIUrl + `/guilds/${obj.guildId}/members/${obj.userId}`,
             method: 'delete',
             ignoreResult: true,
@@ -246,18 +252,36 @@ var findUserId = function (username) {
     return found;
 }
 
-exports.getImage = function(url, callback) {
-    fetch(url)
-    .then(res => res.buffer())
-    .then(buffer => { callback(buffer) });
+exports.getImage = async function(url) {
+    let res = await fetch(url);
+    let buffer = await res.arrayBuffer();
+    return arrayBufferToBuffer(buffer);
 }
 
-var executeRequest = function () {
-    setInterval(() => {
+let bufferToArrayBuffer = function (buf) {
+    const ab = new ArrayBuffer(buf.length);
+    const view = new Uint8Array(ab);
+    for (let i = 0; i < buf.length; ++i) {
+        view[i] = buf[i];
+    }
+    return ab;
+}
+
+let arrayBufferToBuffer = function (ab) {
+    const buf = Buffer.alloc(ab.byteLength);
+    const view = new Uint8Array(ab);
+    for (let i = 0; i < buf.length; ++i) {
+        buf[i] = view[i];
+    }
+    return buf;
+}
+
+var executeRequest = async function () {
+    setInterval(async () => {
         if (realTimeRepository.hasInit) {
             let options = queue.shift();
 
-            if (options != null) {
+            if (options != null && (realTimeRepository.guildIgnore || []).indexOf(options.guildId) == -1) {
                 let headers = {
                         'Authorization': `Bot ${usagiConstant.BOT_DATA.BOT_TOKEN}`,
                         'Accept': '*/*',
@@ -268,16 +292,17 @@ var executeRequest = function () {
                     headers = Object.assign(headers, options.body.getHeaders())
                 }
 
-                let fetchReq = fetch(options.url, {
+                let o = await fetch(options.url, {
                     method: options.method,
                     headers: headers,
                     body: options.body,
                     agent: agent
                 });
-                fetchReq.then((o) => {
+                try {
                     if (o.ok) {
                         if (options.ignoreResult == null || !options.ignoreResult) {
-                            o.json().then((i) => {
+                            try {
+                                let i = await o.json();
                                 if (options.callback != null) {
                                     try {
                                         options.callback(i, options.callbackParams);
@@ -285,7 +310,7 @@ var executeRequest = function () {
                                         console.log(e);
                                     }
                                 }
-                            }, (i) => {
+                            } catch (i) {
                                 console.log('thrown from json function 2', i);
                                 if (options.callback != null) {
                                     try {
@@ -294,20 +319,23 @@ var executeRequest = function () {
                                         console.log(e);
                                     }
                                 }
-                            })
+                            }
                         } else {
                             if (options.callback != null && typeof options.callback === 'function') {
                                 options.callback(options.callbackParams);
                             }
                         }
                     } else {
-                        o.json().then((i) => { 
+                        try {
+                            let i = await o.json();
                             console.log(`server returned ${o.statusText} with message\n`, i);
-                        }, (i) => { console.log('thrown from json function 2', i) })
+                        } catch (i) {
+                            console.log('thrown from json function 2', i);
+                        }
                     }
-                }, (o) => {
-                    console.log(o);
-                });
+                } catch (e) {
+                    console.log("Oh no", e);
+                }
             }
         }
     }, 500);

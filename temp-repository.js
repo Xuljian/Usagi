@@ -3,11 +3,11 @@ const fs = require('fs');
 const dumpFilePath = 'C:\\Data\\UsagiBotDump\\dump.txt';
 
 var restActions = null;
-const { USAGI_CONSTANT } = require('./usagi.constants');
+const { USAGI_CONSTANTS } = require('./usagi.constants');
 
 var hasChanges = true;
 
-var realTimeRepository = {
+let realTimeRepository = {
     guilds: {},
     users: {},
     channels: {},
@@ -15,6 +15,7 @@ var realTimeRepository = {
     hasInit: false,
     fileInit: false,
     channelIgnore: [],
+    guildIgnore: [],
     emojiChannel: [],
     archiveChannel: {},
     archiveListenChannel: {},
@@ -25,6 +26,8 @@ var realTimeRepository = {
         sessionId: null
     }
 }
+
+exports.realTimeRepository = realTimeRepository;
 
 var registerUsersFromGuilds = function () {
     if (Object.keys(realTimeRepository.guilds).length > 0) {
@@ -67,12 +70,15 @@ let getEsentialData = function() {
         fileInit: realTimeRepository.fileInit,
         channelIgnore: realTimeRepository.channelIgnore,
         emojiChannel: realTimeRepository.emojiChannel,
+        guildIgnore: realTimeRepository.guildIgnore,
         archiveChannel: realTimeRepository.archiveChannel,
         archiveListenChannel: realTimeRepository.archiveListenChannel,
         jobs: realTimeRepository.jobs,
         resumeData: realTimeRepository.resumeData
     };
 }
+
+exports.getEsentialData = getEsentialData;
 
 var prettyPrintData = function () {
     return JSON.stringify(getEsentialData(), null, 4);
@@ -124,7 +130,7 @@ exports.userAllowKick = function (guildId, executorId) {
                 if (!result) {
                     roles.forEach((a) => {
                         if (!result && i.id == a) {
-                            let permissionBit = USAGI_CONSTANT.PERMISSIONS.ADMINISTRATOR + USAGI_CONSTANT.PERMISSIONS.KICK_MEMBERS;
+                            let permissionBit = USAGI_CONSTANTS.PERMISSIONS.ADMINISTRATOR + USAGI_CONSTANTS.PERMISSIONS.KICK_MEMBERS;
                             if ((permissionBit & i.permissions) > 0) {
                                 result = true;
                             }
@@ -191,6 +197,7 @@ var importFromFile = function () {
         realTimeRepository.archiveListenChannel = repo.archiveListenChannel || {};
         realTimeRepository.jobs = repo.jobs || [];
         realTimeRepository.fileInit = true;
+        realTimeRepository.guildIgnore = repo.guildIgnore;
         realTimeRepository.resumeData = repo.resumeData || {
             sequenceId: null,
             sessionId: null
@@ -219,11 +226,7 @@ let cleanupRepository = function() {
     })
 }
 
-let onClose = function(forced, callback) {
+exports.onClose = function(forced, callback) {
     cleanupRepository();
     exportToFile(forced, callback);
 }
-
-exports.realTimeRepository = realTimeRepository;
-exports.onclose = onClose;
-exports.getEsentialData = getEsentialData;

@@ -34,7 +34,6 @@ let loopy = setInterval(() => {
 let fireCron = function(cron, job, index) {
     let currentDate = moment.utc().valueOf();
     let cronNextTime = cron.next().getTime();
-    console.log(currentDate, cronNextTime);
     let timeoutId = setTimeout(() => {
         if (repository.jobs[index] != null) {
             const passableIndex = index;
@@ -42,7 +41,8 @@ let fireCron = function(cron, job, index) {
             if (!end) {
                 restActions.sendMessage({
                     message: job.message,
-                    channelId: job.channelId
+                    channelId: job.channelId,
+                    guildId: job.guildId,
                 });
             }
             const passableCron = parser.parseExpression(job.cron, {

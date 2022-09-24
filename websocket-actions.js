@@ -1,37 +1,31 @@
 const FormData = require("form-data");
-const { USAGI_CONSTANT } = require("./usagi.constants");
+const usagiConstants = require("./usagi.constants").USAGI_CONSTANTS;
 
 const pso2Modules = require('./pso2-modules');
 const cronJob = require('./cron-job');
 const moment = require('moment');
 
 const messageLog = [];
+var messageLogs = [];
 
-var mainProcess = function () {
-
+exports.mainProcess = function() {
     const zlib = require("zlib");
-
     const WebSocket = require('ws')
-
     const cdnUrl = 'https://cdn.discordapp.com/';
     const happyGifPath = 'C:\\Data\\UsagiBotDump\\happy.gif';
 
-    const usagiConstants = require('./usagi.constants').USAGI_CONSTANT;
-
-    const realTimeRepository = require('./temp-repository').realTimeRepository;
     const tempRepositoryFunc = require('./temp-repository');
+    const realTimeRepository = tempRepositoryFunc.realTimeRepository;
 
     const restActions = require('./rest-actions');
     const fileType = require('file-type');
 
     const maxImageSize = 262144;
 
-    const fs = require('fs');
+    const tempfs = require('fs');
+    const fs = tempfs.promises;
 
     const prefix = '#!';
-
-    var messageLogs = [];
-    var messageIndex = [];
 
     var validMimes = [
         'image/jpeg',
@@ -72,9 +66,21 @@ var mainProcess = function () {
         cron: (data, args) => {
             processCron(data, args);
         },
-        emoji: (data, args) => {
+        disable: (data, args) => {
+            if (args.length > 0) {
+
+            }
+            realTimeRepository.guildIgnore.push(data.guild_id);
+        },
+        enable: (data, args) => {
+            let index = realTimeRepository.guildIgnore.indexOf(data.guild_id);
+            if (index > -1) {
+                realTimeRepository.guildIgnore.splice(index, 1);
+            }
+        },
+        emoji: async (data, args) => {
             if (validEmojiChannel(data.channel_id)) {
-                processEmoji(data, args)
+                await processEmoji(data, args)
             }
         }
     }
@@ -178,10 +184,10 @@ var mainProcess = function () {
         console.log('CONNECTED!');
     };
 
-    socket.onmessage = function (msg) {
+    socket.onmessage = async function (msg) {
         if (msg.data != null) {
             let data = JSON.parse(msg.data);
-            matchOpCode(data);
+            await matchOpCode(data);
         }
         //decompressMessaege(msg, processMessage);
     };
@@ -211,7 +217,7 @@ var mainProcess = function () {
         socket.sendCustom(identify);
     }
 
-    var matchOpCode = function (data) {
+    var matchOpCode = async function (data) {
         switch (data.op) {
             case 10: {
                 registerHeartbeat(data.d['heartbeat_interval']);
@@ -228,8 +234,7 @@ var mainProcess = function () {
             case 0: {
                 registerSequenceNumber(data);
                 registerSessionId(data);
-                matchType(data);
-                //console.log('0', data);
+                await matchType(data);
                 break;
             }
             case 11: {
@@ -265,7 +270,7 @@ var mainProcess = function () {
         }
     }
 
-    var matchType = function (data) {
+    var matchType = async function (data) {
         switch (data.t) {
             case 'READY': {
                 var usableData = data.d;
@@ -301,13 +306,19 @@ var mainProcess = function () {
 
                 let message = messageLogs[messageIndex];
 
+                if (usableData.embeds != null && usableData.embeds.length > 0) {
+                    messageLogs.splice(messageIndex, 1);
+                    return;
+                }
+
                 let description = '**Edited message\n\n**' +
                                     `Message: ${message.content}\n` +
                                     `New Message: ${usableData.content}\n` +
-                                    `Go to message: https://discord.com/channels/${usableData.guild_id}/${usableData.channel_id}/${usableData.id}\n` +
-                                    `By: <@${usableData.author.id}>\n` +
+                                    `Go to message: https://discord.com/channels/${message.guild_id}/${message.channel_id}/${message.id}\n` +
+                                    `By: <@${message.author.id}>\n` +
                                     `Channel: <#${message.channel_id}>\n`
                 restActions.sendMessage({
+                    guildId: usableData.guild_id,
                     channelId: channelId,
                     embed: {
                         color: 16731558,
@@ -339,14 +350,15 @@ var mainProcess = function () {
                     {
                         let stopProcessing1 = false;
                         let attachmentBuffer = [];
-                        message.attachments.forEach(attachment => {
-                            restActions.getImage(attachment.url, (buffer) => {
-                                if(stopProcessing1) return;
-                                attachmentBuffer.push(buffer);
-                            })
-                        })
+                        for (let i = 0; i < message.attachments.length; i++) {
+                            let attachment = message.attachments[i];
+                            let buff = await restActions.getImage(attachment.url);
+                            if (stopProcessing1) return;
+                            attachmentBuffer.push(buff);
+                        }
+
                         let startWait = moment();
-                        let interval = setInterval(() => {
+                        let interval = setInterval(async () => {
                             if (Object.keys(attachmentBuffer).length != message.attachments.length && moment().diff(startWait) < 120000) {
                                 return;
                             }
@@ -357,6 +369,7 @@ var mainProcess = function () {
                             
                                 let counter = 0;
                                 messageData = {
+                                    guildId: usableData.guild_id,
                                     channelId: channelId,
                                     content: new FormData()
                                 }
@@ -371,18 +384,17 @@ var mainProcess = function () {
                                 let stopProcessing2 = false;
                                 let passes = 0;
                                 let valid = 0;
-                                attachmentBuffer.forEach((buffer) => {
-                                    fileType.fromBuffer(buffer).then((o) => {
-                                        if(stopProcessing2) return;
-                                        if (validMimes.indexOf(o.mime) > -1) {
-                                            messageData.content.append(`${counter}`, buffer, {
-                                                filename: `${counter}.${mimeMapping[o.mime]}`
-                                            });
-                                            counter++;
-                                            valid++;
-                                        }
-                                        passes++;
-                                    })
+                                attachmentBuffer.forEach(async (buffer) => {
+                                    let o = await fileType.fromBuffer(buffer);
+                                    if (stopProcessing2) return;
+                                    if (o && validMimes.indexOf(o.mime) > -1) {
+                                        messageData.content.append(`${counter}`, buffer, {
+                                            filename: `${counter}.${mimeMapping[o.mime]}`
+                                        });
+                                        counter++;
+                                        valid++;
+                                    }
+                                    passes++;
                                 })
                                 startWait = moment();
                                 interval = setInterval(() => {
@@ -393,6 +405,7 @@ var mainProcess = function () {
                                     stopProcessing2 = true;
                                     if (valid == 0) {
                                         restActions.sendMessage({
+                                            guildId: usableData.guild_id,
                                             channelId: channelId,
                                             embed: {
                                                 color: 16731558,
@@ -406,6 +419,7 @@ var mainProcess = function () {
                                 }, 500)
                             } catch {
                                 restActions.sendMessage({
+                                    guildId: usableData.guild_id,
                                     channelId: channelId,
                                     embed: {
                                         color: 16731558,
@@ -414,9 +428,9 @@ var mainProcess = function () {
                                 });
                             }
                         }, 500);
-                        
                     } catch {
                         restActions.sendMessage({
+                            guildId: usableData.guild_id,
                             channelId: channelId,
                             embed: {
                                 color: 16731558,
@@ -426,6 +440,7 @@ var mainProcess = function () {
                     }
                 } else {
                     restActions.sendMessage({
+                        guildId: usableData.guild_id,
                         channelId: channelId,
                         embed: {
                             color: 16731558,
@@ -437,26 +452,27 @@ var mainProcess = function () {
             }
             case 'MESSAGE_CREATE': {
                 let usableData = data.d;
-                
-                cleanupAndStoreToCache(usableData);
 
                 reactToMessage(usableData);
                 // logImage(usableData);
 
                 if (usableData.guild_id == null) {
                     if (!checkIgnore(usableData.channel_id)) {
-                        logMessage(usableData, true, usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID);
+                        await logMessage(usableData, true, usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID);
                     }
                 } else {
-                    if (!checkIgnore(usableData.channel_id)) {
-                        logMessage(usableData, false, usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID);
+                    if (!checkIgnore(usableData.channel_id) &&
+                        (!realTimeRepository.archiveChannel[usableData.guild_id] || realTimeRepository.archiveChannel[usableData.guild_id].indexOf(usableData.channel_id) < 0)) {
+                        await logMessage(usableData, false, usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID);
                     }
                     if (usableData.guild_id != null) {
                         if (usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID) {
                             return;
                         }
-                        botCounter(usableData);
-                        matchCommand(usableData);
+                        await botCounter(usableData);
+                        let hasCommand = await matchCommand(usableData);
+                        if (!hasCommand)
+                            cleanupAndStoreToCache(usableData);
                     }
                 }
                 break;
@@ -487,34 +503,30 @@ var mainProcess = function () {
         }
     }
 
-    var botCounter = function(data) {
+    var botCounter = async function(data) {
         let textRegex = /\*\*Xuljian\*\* and \*\*.*\*\* are now \"friends\"\!/;
         if (data.channel_id != null) {
             let messageData = {
-                channelId: data.channel_id
+                channelId: data.channel_id,
+                guildId: data.guild_id,
             }
             let message = data.content;
             let execData = textRegex.exec(message);
             if (execData != null && data.author?.id !== usagiConstants.BOT_DATA.CLIENT_ID) {
-                fs.readFile(happyGifPath, (err, buffer) => {
-                    if (err) {
-                        console.log('OH NO!!!');
-                        return;
-                    }
-                    fileType.fromBuffer(buffer).then((o) => {
-                        if (validMimes.indexOf(o.mime) > -1) {
-                            let content = new FormData();
-                            messageData.content = content;
-                            content.append('payload_json', JSON.stringify({
-                                content: 'Yay!!!'
-                            }));
-                            content.append('happy', buffer, {
-                                filename: `happy.${mimeMapping[o.mime]}`
-                            });
-                            restActions.sendMessageComplex(messageData);
-                        }
-                    })
-                })
+                let newBuffer = await fs.readFile(happyGifPath);
+                let o = await fileType.fromBuffer(newBuffer);
+                
+                if (validMimes.indexOf(o.mime) > -1) {
+                    let content = new FormData();
+                    messageData.content = content;
+                    content.append('payload_json', JSON.stringify({
+                        content: 'Yay!!!'
+                    }));
+                    content.append('happy', buffer, {
+                        filename: `happy.${mimeMapping[o.mime]}`
+                    });
+                    restActions.sendMessageComplex(messageData);
+                }
             }
         }
     }
@@ -535,12 +547,14 @@ var mainProcess = function () {
                     return a.index - b.index;
                 }).forEach(o => {
                     restActions.reactToMessage({
+                        guildId: usableData.guild_id,
                         channelId: usableData.channel_id,
                         messageId: usableData.id,
                         emoji: o.emoji
                     })
                     if (o.message != null) {
                         restActions.sendMessage({
+                            guildId: usableData.guild_id,
                             channelId: usableData.channel_id,
                             message: o.message
                         })
@@ -550,78 +564,7 @@ var mainProcess = function () {
         }
     }
 
-    var logImage = function(usableData) {
-        if (!tempRepositoryFunc.hasListenerForArchive(usableData.guild_id, usableData.channel_id)) return;
-
-        let channelId = tempRepositoryFunc.archiveChannel(usableData.guild_id);
-        if (channelId == null) return;
-        
-        if (usableData.author?.bot == true) return;
-
-        if (usableData.attachments != null && usableData.attachments.length > 0) {
-            usableData.attachments.forEach(attachment => {
-                let messageData = {
-                    channelId: channelId
-                }
-                restActions.getImage(attachment.url, (buffer) => {
-                    fileType.fromBuffer(buffer).then((o) => {
-                        if (validMimes.indexOf(o.mime) > -1) {
-                            if (usableData.author?.id != null && usableData.author?.avatar != null) {
-                                let url = `${cdnUrl}avatars/${usableData.author.id}/${usableData.author.avatar}`;
-                                restActions.getImage(url, (subBuffer) => {
-                                    fileType.fromBuffer(subBuffer).then((i) => {
-                                        if (validMimes.indexOf(i.mime) > -1) {
-                                            let content = new FormData();
-                                            messageData.content = content;
-                                            content.append('payload_json', JSON.stringify({
-                                                embed: {
-                                                    color: 16731558,
-                                                    image: {
-                                                        url: `attachment://upload.${mimeMapping[o.mime]}`
-                                                    },
-                                                    footer: {
-                                                        text: `by ${usableData.author.nick != null ? usableData.author.nick : usableData.author.username}${realTimeRepository.channels[usableData.channel_id] == null ? '' : ' from ' + realTimeRepository.channels[usableData.channel_id].name}`,
-                                                        icon_url: `attachment://profile.${mimeMapping[i.mime]}`
-                                                    }
-                                                }
-                                            }));
-                                            content.append('upload', buffer, {
-                                                filename: `upload.${mimeMapping[o.mime]}`
-                                            });
-                                            content.append('profile', subBuffer, {
-                                                filename: `profile.${mimeMapping[i.mime]}`
-                                            });
-                                            restActions.sendMessageComplex(messageData);
-                                        }
-                                    })
-                                })
-                            } else {
-                                let content = new FormData();
-                                messageData.content = content;
-                                content.append('payload_json', JSON.stringify({
-                                    embed: {
-                                        color: 16731558,
-                                        image: {
-                                            url: `attachment://upload.${mimeMapping[o.mime]}`
-                                        },
-                                        footer: {
-                                            text: `by ${usableData.author.nick != null ? usableData.author.nick : usableData.author.username}${realTimeRepository.channels[usableData.channel_id] == null ? '' : ' from ' + realTimeRepository.channels[usableData.channel_id].name}`,
-                                        }
-                                    }
-                                }));
-                                content.append('upload', buffer, {
-                                    filename: `upload.${mimeMapping[o.mime]}`
-                                });
-                                restActions.sendMessageComplex(messageData);
-                            }
-                        }
-                    })
-                })
-            })
-        }
-    }
-
-    var logMessage = function (usableData, isTargetted, isMe) {
+    var logMessage = async function (usableData, isTargetted, isMe) {
         let data = {
             message: usableData.content,
             isTargetted: isTargetted,
@@ -649,26 +592,26 @@ var mainProcess = function () {
         }
 
         if (usableData.attachments != null && usableData.attachments.length > 0) {
-            restActions.getImage(usableData.attachments[0].url, (buffer) => {
-                fileType.fromBuffer(buffer).then((o) => {
-                    if (o != null && validMimes.indexOf(o.mime) > -1) {
-                        let base64image = buffer.toString('base64');
-                        data.imageUri = `data:${o.mime};base64,${base64image}`;
-                        messageLog.push(data);
-                    }
-                })
-            })
+            let buffer = await restActions.getImage(usableData.attachments[0].url);
+            
+            let o = await fileType.fromBuffer(buffer);
+            
+            if (o != null && validMimes.indexOf(o.mime) > -1) {
+                let base64image = buffer.toString('base64');
+                data.imageUri = `data:${o.mime};base64,${base64image}`;
+                messageLog.push(data);
+            }
         } else {
             messageLog.push(data);
         }
     }
 
-    var matchCommand = function (data) {
+    var matchCommand = async function (data) {
         let content = data.content;
-        let regexCommand = new RegExp(`^${prefix}*`, 'gm');
+        let regexCommand = new RegExp(`^${prefix}.*`, 'gm');
         let result = regexCommand.exec(content);
         if (result) {
-            let nonGlobalRegexCommand = new RegExp(`^${prefix}*`);
+            let nonGlobalRegexCommand = new RegExp(`^${prefix}`);
             content = content.replace(nonGlobalRegexCommand, '');
             let splitCommand = content.split(' ');
             let command = splitCommand.shift();
@@ -676,10 +619,13 @@ var mainProcess = function () {
 
             if (USAGI_COMMANDS[command.toLowerCase()] == null) {
                 help(data);
+                return false;
             } else {
-                USAGI_COMMANDS[command.toLowerCase()](data, args);
+                await USAGI_COMMANDS[command.toLowerCase()](data, args);
+                return true;
             }
         }
+        return false;
     }
 
     var help = function(data) {
@@ -688,9 +634,13 @@ var mainProcess = function () {
                             '\`\`\`' + Object.keys(USAGI_COMMANDS).join('\n') +
                             '\`\`\`\n' +
                             'All of them have a help page which can be brought up with just the command with no options.\n' +
+                            'Except for disable and enable.\n' + 
+                            'So I will explain it here.\n' +
+                            '\`\`\`\*\*disable\*\* prevents me from talking in the executed server.\n\*\*enable\*\* negates the effect of disable. :)\`\`\`\n' +
                             'Example:\n' +
                             `\`\`\`${prefix}math\n\`\`\``
         restActions.sendMessage({
+            guildId: data.guild_id,
             channelId: data.channel_id,
             embed: {
                 color: 16731558,
@@ -726,6 +676,7 @@ var mainProcess = function () {
                               `${prefix}cron register "* * * * * *" hello (id is ignored, and the second and third parameter will be used as cron expression and message respectively)\n` + 
                               `${prefix}cron unregister 0 (cron expression and message is ignored, the 0 is the id)\`\`\``;
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
                     color: 16731558,
@@ -759,8 +710,9 @@ var mainProcess = function () {
                     break;
                 }
                 case 'listmaster': {
-                    if (data.author?.id !== USAGI_CONSTANT.BOT_DATA.OWNER_ID) {
+                    if (data.author?.id !== usagiConstants.BOT_DATA.OWNER_ID) {
                         restActions.sendMessage({
+                            guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `You got no access to this command`,
                             messageReference: {
@@ -781,6 +733,7 @@ var mainProcess = function () {
                         })
                     }
                     restActions.sendMessage({
+                        guildId: data.guild_id,
                         channelId: data.channel_id,
                         message: description,
                         messageReference: {
@@ -796,6 +749,7 @@ var mainProcess = function () {
                         invalidCommands(data);
                     } else {
                         restActions.sendMessage({
+                            guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `Cron successfully cleared`,
                             messageReference: {
@@ -824,6 +778,7 @@ var mainProcess = function () {
                                 invalidCommands(data);
                             } else {
                                 restActions.sendMessage({
+                                    guildId: data.guild_id,
                                     channelId: data.channel_id,
                                     message: `Cron successfully registered`,
                                     messageReference: {
@@ -850,6 +805,7 @@ var mainProcess = function () {
                             return;
                         }
                         restActions.sendMessage({
+                            guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `Cron successfully unregistered`,
                             messageReference: {
@@ -885,6 +841,7 @@ var mainProcess = function () {
                               `${prefix}math 1+1+2+3/3*4**6 (got no idea the answer why don't you try out? Expression as complex as this works too)\n` +
                               `${prefix}math "hello" in "hello world" (this will search hello in hello world and will highlight the left hand side word in the right hand side word)\`\`\``
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
                     color: 16731558,
@@ -902,6 +859,7 @@ var mainProcess = function () {
             }
             if (result.isIn) {
                 restActions.sendMessage({
+                    guildId: data.guild_id,
                     channelId: data.channel_id,
                     message: `${result.result}`,
                     messageReference: {
@@ -913,6 +871,7 @@ var mainProcess = function () {
                 return;
             }
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 message: `<@!${data.author?.id}> value is ${result.result}`
             });
@@ -923,11 +882,12 @@ var mainProcess = function () {
         }
     }
 
-    var processRandom = function(args, data) {
+    var processRandom = function(data, args) {
         let splitArgs = args.split(' ');
 
-        if (splitArgs[0] === '?') {
+        if (args == null || args === '' || args === '?') {
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 message: `<@!${data.author?.id}> The command is "${prefix}random <min> <max>" where min and max are inclusive. It will not work if both are not given`
             });
@@ -937,6 +897,7 @@ var mainProcess = function () {
             let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
 
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 message: `<@!${data.author?.id}> you rolled ${randomValue}`
             });
@@ -996,6 +957,7 @@ var mainProcess = function () {
                 let regexString = JSON.stringify(newFirst.substring(1, newFirst.length - 1));
                 let newSecond = JSON.stringify(secondString.substring(1, secondString.length - 1));
                 let regex = new RegExp(`(${regexString.substring(1, regexString.length - 1)})`, 'g');
+                console.log(`(${regexString.substring(1, regexString.length - 1)})`);
                 let result = newSecond.replace(regex, '**$1**');
                 result = eval(result.replace(/\*\*\*\*/g, ''));
                 if (result.indexOf('*') > -1) {
@@ -1013,6 +975,7 @@ var mainProcess = function () {
         let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
 
         restActions.sendMessage({
+            guildId: data.guild_id,
             channelId: data.channel_id,
             message: `<@!${data.author?.id}> ${messages[randomValue]}`
         });
@@ -1020,6 +983,7 @@ var mainProcess = function () {
 
     var imageTooHuge = function (data) {
         restActions.sendMessage({
+            guildId: data.guild_id,
             channelId: data.channel_id,
             message: `<@!${data.author?.id}> the file you uploaded is too huge in terms of size. A max of 256kb is allowed.`
         });
@@ -1070,6 +1034,7 @@ var mainProcess = function () {
     var processPSO2Search = function(data, args, exact) {
         if (!pso2Modules.pso2ModulesReady) {
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 message: `<@!${data.author?.id}> this function is not ready yet`
             });
@@ -1079,6 +1044,7 @@ var mainProcess = function () {
         if (args == null || args === '' || args === '?') {
             let description = getDescription(exact);
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
                     color: 16731558,
@@ -1099,6 +1065,7 @@ var mainProcess = function () {
             pso2Modules.getPayload(cmlName, ext, exact, fix, (payload) => {
                 if (payload == null) {
                     restActions.sendMessage({
+                        guildId: data.guild_id,
                         channelId: data.channel_id,
                         messageReference: {
                             channel_id: data.channel_id,
@@ -1109,6 +1076,7 @@ var mainProcess = function () {
                     });
                 } else if (payload === 'not null') {
                     restActions.sendMessage({
+                        guildId: data.guild_id,
                         channelId: data.channel_id,
                         messageReference: {
                             channel_id: data.channel_id,
@@ -1120,6 +1088,7 @@ var mainProcess = function () {
                 } else {
                     let messageData = {
                         channelId: data.channel_id,
+                        guildId: data.guild_id,
                     }
                     let content = new FormData();
                     messageData.content = content;
@@ -1177,7 +1146,7 @@ var mainProcess = function () {
                     "The example above will provide you with the npc file of Io for female human"
     }
 
-    var processEmoji = function(data, args) {
+    var processEmoji = async function(data, args) {
         let splitArgs = args.split(' ');
         let firstArg = splitArgs[0];
         let emojiName = '';
@@ -1193,6 +1162,7 @@ var mainProcess = function () {
                               'Second is:\n' +
                               `${prefix}emoji delete <emoji>, this command is to delete the emoji, <emoji> is just the emoji you want to delete. If you do not have nitro and you need to delete the emoji, you have to get the id of the emoji and type ::id of the emoji in place of <emoji> to delete it\n\`\`\``
             restActions.sendMessage({
+                guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
                     color: 16731558,
@@ -1206,6 +1176,7 @@ var mainProcess = function () {
             let splitSecondArg = splitArgs[1].split(':');
             if (splitSecondArg.length != 3) {
                 invalidCommands(data);
+                return;
             }
             let valueToKill = 0;
             if (splitSecondArg[2].indexOf('>') > -1) {
@@ -1216,6 +1187,7 @@ var mainProcess = function () {
                 restActions.deleteEmoji(data.guild_id, emojiId, (response, callbackParams) => {
                     if (callbackParams.emojiId == emojiId && callbackParams.guildId == data.guild_id) {
                         restActions.sendMessage({
+                            guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `Emoji deleted`
                         })
@@ -1228,43 +1200,42 @@ var mainProcess = function () {
         emojiName = firstArg;
 
         let imageData = data.attachments[0];
-        function mainEmojiProcessor(buffer) {
-            fileType.fromBuffer(buffer).then((o) => {
-                if (validMimes.indexOf(o.mime) > -1) {
-                    let base64image = buffer.toString('base64');
-                    restActions.registerEmoji({
-                        name: emojiName.split('"').join('').split(':').join(''),
-                        image: `data:${o.mime};base64,${base64image}`,
-                        channelId: data.channel_id,
-                        guildId: data.guild_id,
-                        messageId: data.id,
-                        callback: (data, options) => {
-                            let emojiStringPrefix = ':';
-                            if (mimeMapping[o.mime] == 'gif') {
-                                emojiStringPrefix = 'a:';
-                            }
-                            if (data.id != null) {
-                                restActions.sendMessage({
-                                    channelId: options.channelId,
-                                    message: `Emoji added <${emojiStringPrefix}${data.name}:${data.id}>`
-                                })
-                            }
+        async function mainEmojiProcessor(buffer) {
+            let o = await fileType.fromBuffer(buffer);
+            
+            if (validMimes.indexOf(o.mime) > -1) {
+                let base64image = buffer.toString('base64');
+                restActions.registerEmoji({
+                    name: emojiName.split('"').join('').split(':').join(''),
+                    image: `data:${o.mime};base64,${base64image}`,
+                    channelId: data.channel_id,
+                    guildId: data.guild_id,
+                    messageId: data.id,
+                    callback: (data, options) => {
+                        let emojiStringPrefix = ':';
+                        if (mimeMapping[o.mime] == 'gif') {
+                            emojiStringPrefix = 'a:';
                         }
-                    })
-                }
-            })
+                        if (data.id != null) {
+                            restActions.sendMessage({
+                                guildId: data.guild_id,
+                                channelId: options.channelId,
+                                message: `Emoji added <${emojiStringPrefix}${data.name}:${data.id}>`
+                            })
+                        }
+                    }
+                })
+            }
         }
         //#endregion websocket complex processes
 
-        restActions.getImage(imageData.url, (buffer) => {
-            if (Buffer.byteLength(buffer) > maxImageSize) {
-                imageTooHuge(data);
-            }
-            mainEmojiProcessor(buffer);
-        })
+        let buffer = await restActions.getImage(imageData.url);
+        
+        if (Buffer.byteLength(buffer) > maxImageSize) {
+            imageTooHuge(data);
+        }
+        await mainEmojiProcessor(buffer);
     }
 
     return messageLog;
 }
-
-exports.mainProcess = mainProcess;
