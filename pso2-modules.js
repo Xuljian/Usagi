@@ -6,6 +6,7 @@ let tempfs = require('fs');
 let fs = tempfs.promises;
 
 const { USAGI_CONSTANTS } = require('./usagi.constants');
+const { timeoutChainer } = require('./utils/timeout-chainer');
 
 const allowSearchExtension = ['acb', 'cml'];
 
@@ -173,7 +174,7 @@ let processConversionCml = function(inputFilePath, outputPath, extension, fix, c
 
 let isReady = true;
 
-setInterval(async () => {
+timeoutChainer(async () => {
     if (isReady) {
         isReady = false;
         let dat = queue.shift();

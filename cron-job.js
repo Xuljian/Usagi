@@ -2,9 +2,10 @@ const repository = require('./temp-repository').realTimeRepository;
 const parser = require('cron-parser');
 const moment = require('moment');
 const restActions = require('./rest-actions');
+const { timeoutChainer } = require('./utils/timeout-chainer');
 let end = false;
 
-let loopy = setInterval(() => {
+let loopy = timeoutChainer(() => {
     if (!repository.fileInit || !repository.hasInit) {
         return;
     }
@@ -28,7 +29,7 @@ let loopy = setInterval(() => {
             }
         })
     }
-    clearInterval(loopy);
+    loopy.stop = true;
 }, 500)
 
 let fireCron = function(cron, job, index) {

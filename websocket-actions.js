@@ -4,6 +4,7 @@ const usagiConstants = require("./usagi.constants").USAGI_CONSTANTS;
 const pso2Modules = require('./pso2-modules');
 const cronJob = require('./cron-job');
 const moment = require('moment');
+const { timeoutChainer } = require("./utils/timeout-chainer");
 
 const messageLog = [];
 var messageLogs = [];
@@ -358,11 +359,11 @@ exports.mainProcess = function() {
                         }
 
                         let startWait = moment();
-                        let interval = setInterval(async () => {
+                        let interval = timeoutChainer(async () => {
                             if (Object.keys(attachmentBuffer).length != message.attachments.length && moment().diff(startWait) < 120000) {
                                 return;
                             }
-                            clearInterval(interval);
+                            interval.stop = true;
                             try
                             {
                                 stopProcessing1 = true;
@@ -397,11 +398,11 @@ exports.mainProcess = function() {
                                     passes++;
                                 })
                                 startWait = moment();
-                                interval = setInterval(() => {
+                                interval = timeoutChainer(() => {
                                     if (Object.keys(attachmentBuffer).length != passes && moment().diff(startWait) < 60000) {
                                         return;
                                     }
-                                    clearInterval(interval);
+                                    interval.stop = true;
                                     stopProcessing2 = true;
                                     if (valid == 0) {
                                         restActions.sendMessage({

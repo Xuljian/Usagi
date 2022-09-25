@@ -6,6 +6,7 @@ const repo = require('./temp-repository');
 const realTimeRepository = repo.realTimeRepository;
 
 const https = require('https');
+const { timeoutChainer } = require('./utils/timeout-chainer');
 
 const agent = new https.Agent({ keepAlive: true })
 const fetch = require('node-fetch').default;
@@ -277,7 +278,7 @@ let arrayBufferToBuffer = function (ab) {
 }
 
 var executeRequest = async function () {
-    setInterval(async () => {
+    timeoutChainer(async () => {
         if (realTimeRepository.hasInit) {
             let options = queue.shift();
 

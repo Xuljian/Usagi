@@ -4,6 +4,7 @@ const dumpFilePath = 'C:\\Data\\UsagiBotDump\\dump.txt';
 
 var restActions = null;
 const { USAGI_CONSTANTS } = require('./usagi.constants');
+const { timeoutChainer } = require('./utils/timeout-chainer');
 
 var hasChanges = true;
 
@@ -206,12 +207,12 @@ var importFromFile = function () {
 }
 importFromFile();
 
-let intervalReady = setInterval(() => {
+let intervalReady = timeoutChainer(() => {
     if (realTimeRepository.fileInit) {
-        setInterval(registerUsersFromGuilds, 1000);
-        setInterval(updateGuilds, 10000);
-        setInterval(exportToFile, 5000);
-        clearInterval(intervalReady);
+        timeoutChainer(registerUsersFromGuilds, 1000);
+        timeoutChainer(updateGuilds, 10000);
+        timeoutChainer(exportToFile, 5000);
+        intervalReady.stop = true;
     }
 });
 
