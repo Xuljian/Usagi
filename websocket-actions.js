@@ -9,7 +9,7 @@ const { timeoutChainer } = require("./utils/timeout-chainer");
 const messageLog = [];
 var messageLogs = [];
 
-exports.mainProcess = function() {
+let mainProcess = function() {
     const zlib = require("zlib");
     const WebSocket = require('ws')
     const cdnUrl = 'https://cdn.discordapp.com/';
@@ -1240,3 +1240,5 @@ exports.mainProcess = function() {
 
     return messageLog;
 }
+
+exports.mainProcess = mainProcess;
