@@ -1,5 +1,7 @@
-var USAGI_CONSTANTS = {
+exports.USAGI_CONSTANTS = {
     BOT_DATA: {
+        CLIENT_ID: "",
+        BOT_TOKEN: ""
     },
 
     BOT_DUMP_PATH: 'C:\\Data\\UsagiBotDump',
@@ -120,5 +122,3 @@ var USAGI_CONSTANTS = {
         return bit;
     }
 }
-
-exports.USAGI_CONSTANT = USAGI_CONSTANTS;

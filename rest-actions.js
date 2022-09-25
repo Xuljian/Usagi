@@ -6,7 +6,7 @@ const repo = require('./temp-repository');
 const realTimeRepository = repo.realTimeRepository;
 
 const https = require('https');
-const { timeoutChainer } = require('./utils/timeout-chainer');
+const { Mutex } = require('async-mutex');
 
 const agent = new https.Agent({ keepAlive: true })
 const fetch = require('node-fetch').default;
@@ -277,10 +277,15 @@ let arrayBufferToBuffer = function (ab) {
     return buf;
 }
 
-var executeRequest = async function () {
-    timeoutChainer(async () => {
+var executeRequest = function () {
+    let mutex = new Mutex();
+    setInterval(async () => {
         if (realTimeRepository.hasInit) {
-            let options = queue.shift();
+            let options = null;
+
+            await mutex.runExclusive(() => {
+                options = queue.shift();
+            })
 
             if (options != null && (realTimeRepository.guildIgnore || []).indexOf(options.guildId) == -1) {
                 let headers = {
