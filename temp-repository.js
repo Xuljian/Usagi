@@ -15,6 +15,8 @@ let realTimeRepository = {
     bots: {},
     hasInit: false,
     fileInit: false,
+    hasRegisteredCommand: false,
+    commandVersion: null,
     channelIgnore: [],
     guildIgnore: [],
     emojiChannel: [],
@@ -69,6 +71,8 @@ let getEsentialData = function() {
         bots: realTimeRepository.bots,
         hasInit: realTimeRepository.hasInit,
         fileInit: realTimeRepository.fileInit,
+        hasRegisteredCommand: realTimeRepository.hasRegisteredCommand,
+        commandVersion: realTimeRepository.commandVersion,
         channelIgnore: realTimeRepository.channelIgnore,
         emojiChannel: realTimeRepository.emojiChannel,
         guildIgnore: realTimeRepository.guildIgnore,
@@ -196,6 +200,8 @@ var importFromFile = function () {
         realTimeRepository.emojiChannel = repo.emojiChannel || [];
         realTimeRepository.archiveChannel = repo.archiveChannel || {};
         realTimeRepository.archiveListenChannel = repo.archiveListenChannel || {};
+        realTimeRepository.hasRegisteredCommand = repo.hasRegisteredCommand;
+        realTimeRepository.commandVersion = repo.commandVersion;
         realTimeRepository.jobs = repo.jobs || [];
         realTimeRepository.fileInit = true;
         realTimeRepository.guildIgnore = repo.guildIgnore;

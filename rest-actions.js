@@ -1,4 +1,4 @@
-const restAPIUrl = 'https://discord.com/api/v8';
+const restAPIUrl = 'https://discord.com/api/v10';
 
 const usagiConstant = require('./usagi.constants').USAGI_CONSTANTS;
 
@@ -21,6 +21,39 @@ const fetch = require('node-fetch').default;
 //}
 const queue = [];
 
+let respondToInteraction = function(messageObj) {
+    let embeds = messageObj.embed == null ? null : [messageObj.embed];
+
+    var options = {
+        url: restAPIUrl + `/interactions/${messageObj.interactionId}/${messageObj.interactionToken}/callback`,
+        method: 'post',
+        body: JSON.stringify({
+            type: 4,
+            data: {
+                content: messageObj.message,
+                tts: false,
+                embeds: embeds
+            }
+        })
+    }
+    queue.push(options);
+}
+
+//props
+//[
+//    the data, refer to
+//    https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-structure
+//]
+exports.bulkUpdateSlashCommand = function(props, callback) {
+    var options = {
+        url: restAPIUrl + `/applications/${usagiConstant.BOT_DATA.CLIENT_ID}/commands`,
+        method: 'put',
+        body: JSON.stringify(props),
+        callback: callback
+    }
+    queue.push(options);
+}
+
 // messageObj
 //{
 //    userId: 'string',
@@ -31,6 +64,8 @@ const queue = [];
 //    message: 'string'
 //}
 exports.sendDMById = function (messageObj) {
+    let embeds = messageObj.embed == null ? null : [messageObj.embed];
+
     var options = {
         url: restAPIUrl + '/users/@me/channels',
         method: 'post',
@@ -44,7 +79,7 @@ exports.sendDMById = function (messageObj) {
                 body: JSON.stringify({
                     content: messageObj.message,
                     tts: false,
-                    embed: messageObj.embed
+                    embeds: embeds
                 })
             }
             queue.push(subOptions);
@@ -57,7 +92,7 @@ exports.sendDMById = function (messageObj) {
 //{
 //    guildId: 'string'
 //    channelId: 'string'
-//    embed: { 
+//    embeds: { 
 //      title: 'string',
 //      description: 'string'
 //    },
@@ -68,6 +103,14 @@ exports.sendMessage = function (messageObj) {
         console.log('channel id required');
         return;
     }
+
+    if (messageObj.interactionId != null && messageObj.interactionToken != null) {
+        respondToInteraction(messageObj);
+        return;
+    }
+
+    let embeds = messageObj.embed == null ? null : [messageObj.embed];
+
     let subOptions = {
         url: restAPIUrl + `/channels/${messageObj.channelId}/messages`,
         method: 'post',
@@ -76,7 +119,7 @@ exports.sendMessage = function (messageObj) {
             content: messageObj.message,
             message_reference: messageObj.messageReference,
             tts: false,
-            embed: messageObj.embed
+            embeds: embeds
         })
     }
     queue.push(subOptions);
@@ -282,7 +325,6 @@ var executeRequest = function () {
     setInterval(async () => {
         if (realTimeRepository.hasInit) {
             let options = null;
-
             await mutex.runExclusive(() => {
                 options = queue.shift();
             })
@@ -308,7 +350,10 @@ var executeRequest = function () {
                     if (o.ok) {
                         if (options.ignoreResult == null || !options.ignoreResult) {
                             try {
-                                let i = await o.json();
+                                let i = null;
+                                if (o.statusText !== "No Content") {
+                                    i = await o.json();
+                                }
                                 if (options.callback != null) {
                                     try {
                                         options.callback(i, options.callbackParams);
@@ -334,7 +379,7 @@ var executeRequest = function () {
                     } else {
                         try {
                             let i = await o.json();
-                            console.log(`server returned ${o.statusText} with message\n`, i);
+                            console.log(`server returned ${o.statusText} with message\n`, i, options);
                         } catch (i) {
                             console.log('thrown from json function 2', i);
                         }

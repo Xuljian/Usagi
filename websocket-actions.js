@@ -6,6 +6,8 @@ const cronJob = require('./cron-job');
 const moment = require('moment');
 const { timeoutChainer } = require("./utils/timeout-chainer");
 
+const slashCommandInit = require('./init-slash-commands');
+
 const messageLog = [];
 var messageLogs = [];
 
@@ -20,6 +22,8 @@ let mainProcess = function() {
 
     const restActions = require('./rest-actions');
     const fileType = require('file-type');
+
+    slashCommandInit.initSlashCommand();
 
     const maxImageSize = 262144;
 
@@ -51,39 +55,87 @@ let mainProcess = function() {
         '*Angry rabbit noises*'
     ];
 
-    const USAGI_COMMANDS = {
-        random: (data, args) => {
-            processRandom(data, args);
-        },
-        math: (data, args) => {
-            processMath(data, args);
-        },
-        pso2search: (data, args) => {
-            processPSO2Search(data, args);
-        },
-        pso2file: (data, args) => {
-            processPSO2Search(data, args, true);
-        },
-        cron: (data, args) => {
-            processCron(data, args);
-        },
-        disable: (data, args) => {
-            if (args.length > 0) {
+    const SLASH_COMMANDS = ['random', 'math'];
 
+    const USAGI_COMMANDS = {
+        random: {
+            process: (data, args) => {
+                processRandom(data, args);
+            },
+            processOptions: (data) => {
+                let argString = null;
+                if (data.data?.options != null) {
+                    let options = data.data.options;
+                    if (options.length == 2) {
+                        argString = " ";
+                        options.forEach((o) => {
+                            if (o.name === "min") {
+                                argString = o.value + argString;
+                            } else if (o.name === "max") {
+                                argString = argString + o.value;
+                            }
+                        })
+                    }
+                }
+                return argString;
             }
-            realTimeRepository.guildIgnore.push(data.guild_id);
         },
-        enable: (data, args) => {
-            let index = realTimeRepository.guildIgnore.indexOf(data.guild_id);
-            if (index > -1) {
-                realTimeRepository.guildIgnore.splice(index, 1);
+        math: {
+            process: (data, args) => {
+                processMath(data, args);
+            },
+            processOptions: (data) => {
+                let argString = null;
+                if (data.data?.options != null) {
+                    let options = data.data.options;
+                    if (options.length == 1) {
+                        argString = "";
+                        if (options[0].name === "equation") {
+                            argString += options[0].value;
+                        }
+                    }
+                }
+                return argString;
             }
         },
-        emoji: async (data, args) => {
-            if (validEmojiChannel(data.channel_id)) {
-                await processEmoji(data, args)
+        pso2search:  {
+            process: (data, args) => {
+                processPSO2Search(data, args);
             }
-        }
+        },
+        pso2file: {
+            process: (data, args) => {
+                processPSO2Search(data, args, true);
+            },
+        },
+        cron: {
+            process: (data, args) => {
+                processCron(data, args);
+            },
+        },
+        disable: {
+            process: (data, args) => {
+                if (args.length > 0) {
+
+                }
+                realTimeRepository.guildIgnore.push(data.guild_id);
+            }
+        },
+        enable: {
+            process: (data, args) => {
+                let index = realTimeRepository.guildIgnore.indexOf(data.guild_id);
+                if (index > -1) {
+                    realTimeRepository.guildIgnore.splice(index, 1);
+                }
+            }
+        },
+        emoji: {
+            process: async (data, args) => {
+                if (validEmojiChannel(data.channel_id)) {
+                    await processEmoji(data, args)
+                }
+            }
+        },
     }
 
     var stringMappedEmoji = {
@@ -453,10 +505,14 @@ let mainProcess = function() {
             }
             case 'MESSAGE_CREATE': {
                 let usableData = data.d;
+                
+                if (usableData.interaction != null) {
+                    // nothing to log for interaction
+                    return;
+                }
 
                 reactToMessage(usableData);
                 // logImage(usableData);
-
                 if (usableData.guild_id == null) {
                     if (!checkIgnore(usableData.channel_id)) {
                         await logMessage(usableData, true, usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID);
@@ -470,11 +526,22 @@ let mainProcess = function() {
                         if (usableData.author?.id === usagiConstants.BOT_DATA.CLIENT_ID) {
                             return;
                         }
+
                         await botCounter(usableData);
                         let hasCommand = await matchCommand(usableData);
                         if (!hasCommand)
                             cleanupAndStoreToCache(usableData);
                     }
+                }
+                break;
+            }
+            case 'INTERACTION_CREATE': {
+                let usableData = data.d;
+                if (usableData.guild_id != null) {
+                    if (usableData.member?.user?.id === usagiConstants.BOT_DATA.CLIENT_ID) {
+                        return;
+                    }
+                    await matchInteraction(usableData);
                 }
                 break;
             }
@@ -622,14 +689,28 @@ let mainProcess = function() {
                 help(data);
                 return false;
             } else {
-                await USAGI_COMMANDS[command.toLowerCase()](data, args);
+                await USAGI_COMMANDS[command.toLowerCase()].process(data, args);
                 return true;
             }
         }
         return false;
     }
 
-    var help = function(data) {
+    var matchInteraction = async function (data) {
+        let command = data.data.name;
+        if (USAGI_COMMANDS[command.toLowerCase()] == null) {
+            help(data);
+        } else {
+            let optionsProcessor = USAGI_COMMANDS[command.toLowerCase()].processOptions;
+            let args = null;
+            if (optionsProcessor != null) {
+                args = optionsProcessor(data);
+            }
+            await USAGI_COMMANDS[command.toLowerCase()].process(data, args);
+        }
+    }
+
+    var help = function(usableData) {
         let description = '**Usagi bot commands\n\n**' +
                             'List of available commands!\n' +
                             '\`\`\`' + Object.keys(USAGI_COMMANDS).join('\n') +
@@ -639,10 +720,13 @@ let mainProcess = function() {
                             'So I will explain it here.\n' +
                             '\`\`\`\*\*disable\*\* prevents me from talking in the executed server.\n\*\*enable\*\* negates the effect of disable. :)\`\`\`\n' +
                             'Example:\n' +
-                            `\`\`\`${prefix}math\n\`\`\``
+                            `\`\`\`${prefix}math\n\`\`\`\n` +
+                            '\\*\\****For slash commands only the ' + SLASH_COMMANDS.join(", ") + ' are available at the moment***'
         restActions.sendMessage({
-            guildId: data.guild_id,
-            channelId: data.channel_id,
+            interactionId: usableData.id,
+            interactionToken: usableData.token,
+            guildId: usableData.guild_id,
+            channelId: usableData.channel_id,
             embed: {
                 color: 16731558,
                 description: description
@@ -677,6 +761,8 @@ let mainProcess = function() {
                               `${prefix}cron register "* * * * * *" hello (id is ignored, and the second and third parameter will be used as cron expression and message respectively)\n` + 
                               `${prefix}cron unregister 0 (cron expression and message is ignored, the 0 is the id)\`\`\``;
             restActions.sendMessage({
+                interactionId: data.id,
+                interactionToken: data.token,
                 guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
@@ -700,6 +786,8 @@ let mainProcess = function() {
                         })
                     }
                     restActions.sendMessage({
+                        interactionId: data.id,
+                        interactionToken: data.token,
                         channelId: data.channel_id,
                         message: description,
                         messageReference: {
@@ -713,6 +801,8 @@ let mainProcess = function() {
                 case 'listmaster': {
                     if (data.author?.id !== usagiConstants.BOT_DATA.OWNER_ID) {
                         restActions.sendMessage({
+                            interactionId: data.id,
+                            interactionToken: data.token,
                             guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `You got no access to this command`,
@@ -734,6 +824,8 @@ let mainProcess = function() {
                         })
                     }
                     restActions.sendMessage({
+                        interactionId: data.id,
+                        interactionToken: data.token,
                         guildId: data.guild_id,
                         channelId: data.channel_id,
                         message: description,
@@ -750,6 +842,8 @@ let mainProcess = function() {
                         invalidCommands(data);
                     } else {
                         restActions.sendMessage({
+                            interactionId: data.id,
+                            interactionToken: data.token,
                             guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `Cron successfully cleared`,
@@ -779,6 +873,8 @@ let mainProcess = function() {
                                 invalidCommands(data);
                             } else {
                                 restActions.sendMessage({
+                                    interactionId: data.id,
+                                    interactionToken: data.token,
                                     guildId: data.guild_id,
                                     channelId: data.channel_id,
                                     message: `Cron successfully registered`,
@@ -806,6 +902,8 @@ let mainProcess = function() {
                             return;
                         }
                         restActions.sendMessage({
+                            interactionId: data.id,
+                            interactionToken: data.token,
                             guildId: data.guild_id,
                             channelId: data.channel_id,
                             message: `Cron successfully unregistered`,
@@ -842,6 +940,8 @@ let mainProcess = function() {
                               `${prefix}math 1+1+2+3/3*4**6 (got no idea the answer why don't you try out? Expression as complex as this works too)\n` +
                               `${prefix}math "hello" in "hello world" (this will search hello in hello world and will highlight the left hand side word in the right hand side word)\`\`\``
             restActions.sendMessage({
+                interactionId: data.id,
+                interactionToken: data.token,
                 guildId: data.guild_id,
                 channelId: data.channel_id,
                 embed: {
@@ -860,6 +960,8 @@ let mainProcess = function() {
             }
             if (result.isIn) {
                 restActions.sendMessage({
+                    interactionId: data.id,
+                    interactionToken: data.token,
                     guildId: data.guild_id,
                     channelId: data.channel_id,
                     message: `${result.result}`,
@@ -872,9 +974,11 @@ let mainProcess = function() {
                 return;
             }
             restActions.sendMessage({
+                interactionId: data.id,
+                interactionToken: data.token,
                 guildId: data.guild_id,
                 channelId: data.channel_id,
-                message: `<@!${data.author?.id}> value is ${result.result}`
+                message: `${getTag(data.author?.id)} Your equation: ${args}\nThe result: ${result.result}`.trim()
             });
         } catch (e) {
             console.log(e);
@@ -888,9 +992,11 @@ let mainProcess = function() {
 
         if (args == null || args === '' || args === '?') {
             restActions.sendMessage({
+                interactionId: data.id,
+                interactionToken: data.token,
                 guildId: data.guild_id,
                 channelId: data.channel_id,
-                message: `<@!${data.author?.id}> The command is "${prefix}random <min> <max>" where min and max are inclusive. It will not work if both are not given`
+                message: `${getTag(data.author?.id)} The command is "${prefix}random <min> <max>" where min and max are inclusive. It will not work if both are not given`.trim()
             });
         } else if (/\d+/.exec(splitArgs[0]) != null && /\d+/.exec(splitArgs[1]) != null) {
             let low = parseInt(splitArgs[0]);
@@ -898,9 +1004,11 @@ let mainProcess = function() {
             let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
 
             restActions.sendMessage({
+                interactionId: data.id,
+                interactionToken: data.token,
                 guildId: data.guild_id,
                 channelId: data.channel_id,
-                message: `<@!${data.author?.id}> you rolled ${randomValue}`
+                message: `${getTag(data.author?.id)} Your settings: minimum: ${splitArgs[0]}, maximum ${splitArgs[1]}.\nYou rolled ${randomValue}`.trim()
             });
         } else {
             invalidCommands(data);
@@ -976,17 +1084,21 @@ let mainProcess = function() {
         let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
 
         restActions.sendMessage({
+            interactionId: data.id,
+            interactionToken: data.token,
             guildId: data.guild_id,
             channelId: data.channel_id,
-            message: `<@!${data.author?.id}> ${messages[randomValue]}`
+            message: `${getTag(data.author?.id)} ${messages[randomValue]}`.trim()
         });
     }
 
     var imageTooHuge = function (data) {
         restActions.sendMessage({
+            interactionId: data.id,
+            interactionToken: data.token,
             guildId: data.guild_id,
             channelId: data.channel_id,
-            message: `<@!${data.author?.id}> the file you uploaded is too huge in terms of size. A max of 256kb is allowed.`
+            message: `${getTag(data.author?.id)} The file you uploaded is too huge in terms of size. A max of 256kb is allowed.`.trim()
         });
     }
 
@@ -1031,13 +1143,17 @@ let mainProcess = function() {
         console.log(msg);
     }
 
+    var getTag = function(authorId) {
+        return `${authorId ? '<@!' + authorId + '>' : ''}`;
+    }
+
     //#region websocket complex processes
     var processPSO2Search = function(data, args, exact) {
         if (!pso2Modules.pso2ModulesReady) {
             restActions.sendMessage({
                 guildId: data.guild_id,
                 channelId: data.channel_id,
-                message: `<@!${data.author?.id}> this function is not ready yet`
+                message: `${getTag(data.author?.id)} This command is not ready yet`.trim()
             });
             return;
         }
@@ -1073,7 +1189,7 @@ let mainProcess = function() {
                             message_id: data.id,
                             guild_id: data.guild_id
                         },
-                        message: `<@!${data.author?.id}> can't find the file sorry :(`
+                        message: `${getTag(data.author?.id)} Can't find the file sorry :(`.trim()
                     });
                 } else if (payload === 'not null') {
                     restActions.sendMessage({
@@ -1084,7 +1200,7 @@ let mainProcess = function() {
                             message_id: data.id,
                             guild_id: data.guild_id
                         },
-                        message: `<@!${data.author?.id}> this command is out of order, I have pinged my master. Sorry for the inconvenience :(`
+                        message: `${getTag(data.author?.id)} This command is out of order, I have pinged my master. Sorry for the inconvenience :(`.trim()
                     });
                 } else {
                     let messageData = {
