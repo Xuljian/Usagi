@@ -322,7 +322,7 @@ let arrayBufferToBuffer = function (ab) {
 
 var executeRequest = function () {
     let mutex = new Mutex();
-    setInterval(async () => {
+    return setInterval(async () => {
         if (realTimeRepository.hasInit) {
             let options = null;
             await mutex.runExclusive(() => {
@@ -392,4 +392,7 @@ var executeRequest = function () {
     }, 500);
 }
 
-executeRequest();
+let interval = executeRequest();
+exports.endRest = function() {
+    clearInterval(interval);
+}

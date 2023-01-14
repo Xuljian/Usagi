@@ -1,6 +1,6 @@
 exports.pso2ModulesReady = false;
 
-require('./pre-process-pso2-modules').processOutput();
+require('./pre-process-pso2-modules').preProcessPSO2Modules();
 
 const { Mutex } = require('async-mutex');
 let tempfs = require('fs');
@@ -176,7 +176,7 @@ let processConversionCml = function(inputFilePath, outputPath, extension, fix, c
 let isReady = true;
 let mutex = new Mutex();
 
-setInterval(async () => {
+let interval = setInterval(async () => {
     if (isReady) {
         isReady = false;
         let dat = null;
@@ -196,3 +196,7 @@ setInterval(async () => {
         isReady = true;
     }
 }, 500);
+
+exports.endPSO2 = function() {
+    clearInterval(interval);
+}

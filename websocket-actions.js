@@ -4,6 +4,14 @@ const slashCommandInit = require('./slash-commands');
 const { uiMessageLogs } = require('./message-logs-storage');
 const { EVENT_TYPES } = require('./event-types');
 
+let socket = null;
+let end = false;
+
+exports.end = function() {
+    end = true;
+    socket.close();
+}
+
 let mainProcess = function() {
     const zlib = require("zlib");
     const WebSocket = require('ws')
@@ -84,7 +92,7 @@ let mainProcess = function() {
     var discordGatewayVersionNumber = 8;
     var encoding = 'json';
 
-    var socket = new WebSocket(`wss://gateway.discord.gg/?v=${discordGatewayVersionNumber}&encoding=${encoding}`);
+    socket = new WebSocket(`wss://gateway.discord.gg/?v=${discordGatewayVersionNumber}&encoding=${encoding}`);
 
     socket.sendCustom = function (data, callback) {
         callback = callback || ((err) => { });
@@ -104,7 +112,7 @@ let mainProcess = function() {
     };
 
     socket.onclose = function (event) {
-        if (socket.readyState === WebSocket.CLOSED) {
+        if (!end && socket.readyState === WebSocket.CLOSED) {
             console.log('socket has closed, restarting');
             mainProcess();
         }
