@@ -1,6 +1,6 @@
 const restActions = require('../rest-actions');
 const getTag = require('../utils/common').getTag;
-const pso2Modules = require('../utils/pso2-modules');
+const pso2Modules = require('../utils/pso2/pso2-modules');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 
 const prefix = usagiConstants.BOT_DATA.COMMAND_PREFIX;

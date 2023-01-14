@@ -1,9 +1,9 @@
 const fs = require('fs');
-const { USAGI_CONSTANTS } = require('./usagi.constants');
+const { USAGI_CONSTANTS } = require('../../usagi.constants');
 const pathToOutput = `${USAGI_CONSTANTS.BOT_DUMP_PATH}\\output.txt`;
 const pathToFinalFile = `${USAGI_CONSTANTS.BOT_DUMP_PATH}\\ice_mapped_list.json`;
 
-exports.processOutput = function() {
+exports.preProcessPSO2Modules = function() {
     if (fs.existsSync(pathToOutput)) {
         let finalFileList = [];
         let pathRegex = new RegExp('(?:win32|win32reboot)\\\\([A-Za-z0-9]{32}) ICE');

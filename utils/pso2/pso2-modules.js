@@ -1,12 +1,12 @@
 exports.pso2ModulesReady = false;
 
-require('../process-output-file').processOutput();
+require('./pre-process-pso2-modules').processOutput();
 
 const { Mutex } = require('async-mutex');
 let tempfs = require('fs');
 let fs = tempfs.promises;
 
-const { USAGI_CONSTANTS } = require('../usagi.constants');
+const { USAGI_CONSTANTS } = require('../../usagi.constants');
 
 const allowSearchExtension = ['acb', 'cml'];
 
