@@ -5,6 +5,9 @@ const { timeoutChainer } = require('./utils/timeout-chainer');
 
 let version = "1.0.0";
 
+const AVAILABLE_SLASH_COMMANDS = ["help", "math", "random"];
+exports.AVAILABLE_SLASH_COMMANDS = AVAILABLE_SLASH_COMMANDS;
+
 let slashCommandObjs = [
     {
         type: 1,

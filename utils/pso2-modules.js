@@ -1,12 +1,12 @@
 exports.pso2ModulesReady = false;
 
-require('./process-output-file').processOutput();
+require('../process-output-file').processOutput();
 
 const { Mutex } = require('async-mutex');
 let tempfs = require('fs');
 let fs = tempfs.promises;
 
-const { USAGI_CONSTANTS } = require('./usagi.constants');
+const { USAGI_CONSTANTS } = require('../usagi.constants');
 
 const allowSearchExtension = ['acb', 'cml'];
 
@@ -109,8 +109,9 @@ let uploadFile = async function(subDat, callback) {
     } else {
         let exactFilename = subDat.newPath.split('\\')[subDat.newPath.split('\\').length - 1];
         let filename = exactFilename.split('.')[0];
+        let data = null;
         try {
-            await fs.readFile(subDat.newPath);
+            data = await fs.readFile(subDat.newPath);
         } catch (e) {
             callback("not null");
             await cleanup(subDat.cleanupPath);

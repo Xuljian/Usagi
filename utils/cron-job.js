@@ -1,8 +1,8 @@
-const repository = require('./temp-repository').realTimeRepository;
+const repository = require('../temp-repository').realTimeRepository;
 const parser = require('cron-parser');
 const moment = require('moment');
-const restActions = require('./rest-actions');
-const { timeoutChainer } = require('./utils/timeout-chainer');
+const restActions = require('../rest-actions');
+const { timeoutChainer } = require('./timeout-chainer');
 let end = false;
 
 let loopy = timeoutChainer(() => {

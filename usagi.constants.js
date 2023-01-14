@@ -1,10 +1,13 @@
 exports.USAGI_CONSTANTS = {
     BOT_DATA: {
         CLIENT_ID: "",
-        BOT_TOKEN: ""
+        BOT_TOKEN: "",
+        EMBED_COLOR_HEX: null,
+        COMMAND_PREFIX: "#!"
     },
 
-    BOT_DUMP_PATH: 'C:\\Data\\UsagiBotDump',
+    MAX_IMAGE_UPLOAD_SIZE: 262144,
+    BOT_DUMP_PATH: '',
     
     PERMISSIONS: {
         CREATE_INSTANT_INVITE: 0x00000001,
