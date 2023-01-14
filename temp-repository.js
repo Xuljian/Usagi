@@ -213,11 +213,15 @@ var importFromFile = function () {
 }
 importFromFile();
 
+let loopers = null;
+
 let intervalReady = timeoutChainer(() => {
     if (realTimeRepository.fileInit) {
-        timeoutChainer(registerUsersFromGuilds, 1000);
-        timeoutChainer(updateGuilds, 10000);
-        timeoutChainer(exportToFile, 5000);
+        loopers = [
+            timeoutChainer(registerUsersFromGuilds, 1000),
+            timeoutChainer(updateGuilds, 10000),
+            timeoutChainer(exportToFile, 5000),
+        ]
         intervalReady.stop = true;
     }
 });
@@ -233,7 +237,13 @@ let cleanupRepository = function() {
     })
 }
 
-exports.onClose = function(forced, callback) {
+exports.onClose = function(ignoreDB, forced, callback) {
     cleanupRepository();
-    exportToFile(forced, callback);
+    if (loopers != null) {
+        loopers.forEach(looper => { looper.stop = true; });
+    }
+    if (!ignoreDB)
+        exportToFile(forced, callback);
+    else
+        callback != null && callback();
 }
