@@ -14,7 +14,7 @@ exports.end = function() {
 
 let mainProcess = function() {
     const zlib = require("zlib");
-    const WebSocket = require('ws')
+    const WebSocket = require('ws');
 
     const tempRepositoryFunc = require('./temp-repository');
     const realTimeRepository = tempRepositoryFunc.realTimeRepository;
@@ -95,8 +95,10 @@ let mainProcess = function() {
     socket = new WebSocket(`wss://gateway.discord.gg/?v=${discordGatewayVersionNumber}&encoding=${encoding}`);
 
     socket.sendCustom = function (data, callback) {
-        callback = callback || ((err) => { });
-        this.send(JSON.stringify(data), callback);
+        if (socket.readyState !== WebSocket.CLOSED) {
+            callback = callback || ((err) => { });
+            this.send(JSON.stringify(data), callback);
+        }
     }
 
     socket.onopen = function (e) {

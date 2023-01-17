@@ -11,13 +11,17 @@ const { Mutex } = require('async-mutex');
 const agent = new https.Agent({ keepAlive: true })
 const fetch = require('node-fetch').default;
 
-// objects in this queue looks like the object below
+// messageObj
 //{
-//    hostname: 'whatever.com',
-//    port: 443,
-//    path: '/todos',
-//    method: 'GET',
-//    callback: function(data)
+//    guildId: 'string'
+//    interactionId: 'string'
+//    interactionToken: 'string'
+//    channelId: 'string'
+//    embeds: { 
+//      title: 'string',
+//      description: 'string'
+//    },
+//    message: 'string'
 //}
 const queue = [];
 
@@ -32,6 +36,7 @@ let respondToInteraction = function(messageObj) {
             data: {
                 content: messageObj.message,
                 tts: false,
+                flags: messageObj.isEphemeral == true ? 1<<6 : null,
                 embeds: embeds
             }
         })
@@ -91,6 +96,9 @@ exports.sendDMById = function (messageObj) {
 // messageObj
 //{
 //    guildId: 'string'
+//    interactionId: 'string' <- optional
+//    interactionToken: 'string' <- optional
+//    isEphemeral: 'string'
 //    channelId: 'string'
 //    embeds: { 
 //      title: 'string',

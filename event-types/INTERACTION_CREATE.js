@@ -1,3 +1,4 @@
+const { USAGI_INTERACTIONS } = require('../interactions');
 const { USAGI_COMMANDS } = require('../commands');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 
@@ -13,14 +14,14 @@ exports.process = async function(data) {
 
  let matchInteraction = async function (data) {
     let command = data.data.name;
-    if (USAGI_COMMANDS[command.toLowerCase()] == null) {
+    if (USAGI_INTERACTIONS[command.toLowerCase()] == null) {
         USAGI_COMMANDS['help'].process(data);
     } else {
-        let optionsProcessor = USAGI_COMMANDS[command.toLowerCase()].processOptions;
+        let optionsProcessor = USAGI_INTERACTIONS[command.toLowerCase()].processOptions;
         let args = null;
         if (optionsProcessor != null) {
             args = optionsProcessor(data);
         }
-        await USAGI_COMMANDS[command.toLowerCase()].process(data, args);
+        await USAGI_INTERACTIONS[command.toLowerCase()].process(data, args);
     }
 }

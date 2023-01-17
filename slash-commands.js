@@ -3,45 +3,16 @@ const tempRepositoryFunc = require('./temp-repository');
 const repository = tempRepositoryFunc.realTimeRepository;
 const { timeoutChainer } = require('./utils/timeout-chainer');
 
-let version = "1.0.0";
+const { USAGI_INTERACTIONS } = require('./interactions');
 
-const AVAILABLE_SLASH_COMMANDS = ["help", "math", "random"];
+let version = "1.0.1";
+
+const AVAILABLE_SLASH_COMMANDS = Object.keys(USAGI_INTERACTIONS);
 exports.AVAILABLE_SLASH_COMMANDS = AVAILABLE_SLASH_COMMANDS;
 
-let slashCommandObjs = [
-    {
-        type: 1,
-        name: "help",
-        description: "Displays the available commands for Usagi"
-    },
-    {
-        type: 1,
-        name: "math",
-        description: "Calculate the equation given",
-        options: [{
-            type: 3,
-            name: "equation",
-            description: "The equation to calculate",
-            required: false
-        }]
-    },
-    {
-        type: 1,
-        name: "random",
-        description: "Generate a random number based off minimum and maximum provided",
-        options: [{
-            type: 3,
-            name: "min",
-            description: "The minimum value (inclusive)",
-            required: false
-        },{
-            type: 3,
-            name: "max",
-            description: "The maximum value (inclusive)",
-            required: false
-        }]
-    }
-]
+let slashCommandObjs = Object.keys(USAGI_INTERACTIONS).map((key) => {
+    return USAGI_INTERACTIONS[key].slashCommandRegistrationObj;
+});
 
 exports.initSlashCommand = function() {
     let looper = timeoutChainer(() => {

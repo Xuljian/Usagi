@@ -33,21 +33,3 @@ exports.process = function(data, args) {
     }
     return false;
 }
-
-exports.processOptions = function(data) {
-    let argString = null;
-    if (data.data?.options != null) {
-        let options = data.data.options;
-        if (options.length == 2) {
-            argString = " ";
-            options.forEach((o) => {
-                if (o.name === "min") {
-                    argString = o.value + argString;
-                } else if (o.name === "max") {
-                    argString = argString + o.value;
-                }
-            })
-        }
-    }
-    return argString;
-}
