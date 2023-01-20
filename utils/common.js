@@ -12,6 +12,14 @@ exports.checkUILoggingIgnore = function (id) {
     return result >= 0;
 }
 
+// function will pick 1 and return out of all items in the arr provided
+exports.pickOne = function(arr) {
+    let low = 0;
+    let high = arr.length - 1;
+    let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
+    return arr[randomValue];
+}
+
 const validMimes = [
     'image/jpeg',
     'image/png',

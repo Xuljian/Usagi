@@ -95,7 +95,7 @@ let mainProcess = function() {
     socket = new WebSocket(`wss://gateway.discord.gg/?v=${discordGatewayVersionNumber}&encoding=${encoding}`);
 
     socket.sendCustom = function (data, callback) {
-        if (socket.readyState !== WebSocket.CLOSED) {
+        if (socket.readyState === WebSocket.OPEN) {
             callback = callback || ((err) => { });
             this.send(JSON.stringify(data), callback);
         }

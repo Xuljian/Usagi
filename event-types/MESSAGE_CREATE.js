@@ -5,7 +5,7 @@ var { uiMessageLogs, messageLogs } = require('../message-logs-storage');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 const realTimeRepository = tempRepositoryFunc.realTimeRepository;
 
-const { checkUILoggingIgnore } = require('../utils/common');
+const { checkUILoggingIgnore, pickOne } = require('../utils/common');
 const { USAGI_COMMANDS } = require('../commands');
 const { validMimes } = require('../utils/common');
 const fileType = require('file-type');
@@ -137,15 +137,11 @@ let cleanupAndStoreToCache = function(usableData) {
 }
 
 var invalidCommands = function (data) {
-    let low = 0;
-    let high = INVALID_MESSAGES.length - 1;
-    let randomValue = Math.floor(Math.random() * (high - low + 1) + low);
-
     restActions.sendMessage({
         interactionId: data.id,
         interactionToken: data.token,
         guildId: data.guild_id,
         channelId: data.channel_id,
-        message: `${getTag(data.author?.id)} ${INVALID_MESSAGES[randomValue]}`.trim()
+        message: `${getTag(data.author?.id)} ${pickOne(INVALID_MESSAGES)}`.trim()
     });
 }
