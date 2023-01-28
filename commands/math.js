@@ -11,7 +11,7 @@ exports.process = function(data, args) {
         let description = '**Using Math\n\n**' +
                             `\`\`${prefix}math <expression>\`\`\n\n` +
                             'This command is to do....well math!\n' +
-                            '<expression> is be the math you want to do.' +
+                            '<expression> is the math you want to do.' +
                             '\`\`\`+ for addition\n' +
                             '- for subtraction\n' +
                             '* for multiplication\n' +
