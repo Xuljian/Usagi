@@ -14,9 +14,11 @@ let registerHeartbeatMutex = new Mutex();
 let heartbeatInterval = null;
 
 exports.end = function() {
-    socket.onClose = null;
-    socket.close();
-    socket = null;
+    if (socket != null) {
+        socket.onClose = null;
+        socket.close();
+        socket = null;
+    }
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
     }
@@ -124,7 +126,7 @@ let mainProcess = function() {
     };
 
     socket.onclose = function (event) {
-        if (socket.readyState === WebSocket.CLOSED) {
+        if (socket && socket.readyState === WebSocket.CLOSED) {
             log('socket has closed, restarting');
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -141,12 +143,14 @@ let mainProcess = function() {
     };
 
     var fireResume = function() {
+        if (!socket) return;
         resume.d.session_id = realTimeRepository.resumeData.sessionId;
         resume.d.seq = realTimeRepository.resumeData.sequenceId;
         socket.sendCustom(resume);
     }
 
     var fireIdentify = function () {
+        if (!socket) return;
         log('Fire identify D:');
         socket.sendCustom(identify);
     }
