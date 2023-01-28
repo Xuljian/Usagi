@@ -1,15 +1,25 @@
 const usagiConstants = require("./usagi.constants").USAGI_CONSTANTS;
 const slashCommandInit = require('./slash-commands');
 
+const { log } = require('./utils/logger');
+
 const { uiMessageLogs } = require('./message-logs-storage');
 const { EVENT_TYPES } = require('./event-types');
 
+const { Mutex } = require('async-mutex');
+
 let socket = null;
-let end = false;
+
+let registerHeartbeatMutex = new Mutex();
+let heartbeatInterval = null;
 
 exports.end = function() {
-    end = true;
+    socket.onClose = null;
     socket.close();
+    socket = null;
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+    }
 }
 
 let mainProcess = function() {
@@ -102,7 +112,7 @@ let mainProcess = function() {
     }
 
     socket.onopen = function (e) {
-        console.log('CONNECTED!');
+        log('CONNECTED!');
     };
 
     socket.onmessage = async function (msg) {
@@ -114,14 +124,17 @@ let mainProcess = function() {
     };
 
     socket.onclose = function (event) {
-        if (!end && socket.readyState === WebSocket.CLOSED) {
-            console.log('socket has closed, restarting');
+        if (socket.readyState === WebSocket.CLOSED) {
+            log('socket has closed, restarting');
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+            }
             mainProcess();
         }
     };
 
     socket.onerror = function (error) {
-        console.log('onerror ' + socket.readyState);
+        log('onerror ' + socket.readyState);
         //if (socket.readyState === WebSocket.CLOSED) {
         //    mainProcess();
         //}
@@ -134,18 +147,18 @@ let mainProcess = function() {
     }
 
     var fireIdentify = function () {
-        console.log('Fire identify D:');
+        log('Fire identify D:');
         socket.sendCustom(identify);
     }
 
     var matchOpCode = async function (data) {
+        await registerSequenceNumber(data);
         switch (data.op) {
             case 10: {
                 registerHeartbeat(data.d['heartbeat_interval']);
-                registerSequenceNumber(data);
                 if (realTimeRepository.resumeData.sessionId != null) {
                     triedResuming = true;
-                    console.log('Resuming.....');
+                    log('Resuming.....');
                     fireResume();
                 } else {
                     fireIdentify();
@@ -153,7 +166,6 @@ let mainProcess = function() {
                 break;
             }
             case 0: {
-                registerSequenceNumber(data);
                 registerSessionId(data);
                 await matchType(data);
                 break;
@@ -162,11 +174,11 @@ let mainProcess = function() {
                 break;
             }
             case 7: {
-                console.log('Resumed!')
+                log('Resumed!')
                 break;
             }
             case 9: {
-                console.log('op code 9');
+                log('op code 9');
                 if (triedResuming) {
                     triedResuming = false;
                     setTimeout(() => {
@@ -174,12 +186,11 @@ let mainProcess = function() {
                     }, 5000);
                     break;
                 }
-                console.log('op code 9', data);
+                log('op code 9', data);
                 break;
             }
             default: {
-                console.log(data.op, data);
-                registerSequenceNumber(data);
+                log(data.op, data);
                 break;
             }
         }
@@ -197,18 +208,20 @@ let mainProcess = function() {
         }
     }
 
-    var registerSequenceNumber = function (data) {
-        if (data.s != null && data.s > sequenceNumber) {
-            sequenceNumber = data.s;
-        }
-        heartbeat.d = sequenceNumber;
-        realTimeRepository.resumeData.sequenceId = heartbeat.d;
+    var registerSequenceNumber = async function (data) {
+        await registerHeartbeatMutex.runExclusive(() => {
+            if (data.s != null && data.s > (sequenceNumber || -1)) {
+                sequenceNumber = data.s;
+            }
+            heartbeat.d = sequenceNumber;
+            realTimeRepository.resumeData.sequenceId = heartbeat.d;
+        });
     }
 
     var registerHeartbeat = function (interval) {
-        setTimeout(function () {
+        log("from register heartbeat: ", interval);
+        heartbeatInterval = setInterval(function () {
             socket.sendCustom(heartbeat);
-            registerHeartbeat(interval);
         }, interval);
     }
 
@@ -235,7 +248,7 @@ let mainProcess = function() {
     }
 
     var processMessage = function (msg) {
-        console.log(msg);
+        log(msg);
     }
 
     //#region websocket complex processes

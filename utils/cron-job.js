@@ -3,6 +3,9 @@ const parser = require('cron-parser');
 const moment = require('moment');
 const restActions = require('../rest-actions');
 const { timeoutChainer } = require('./timeout-chainer');
+
+const { log } = require('./logger');
+
 let end = false;
 
 let loopy = timeoutChainer(() => {
@@ -95,7 +98,7 @@ exports.registerCron = function(cronRegistration) {
                 fireCron(cron, cronRegistration, length - 1);
             }
         } catch (err) {
-            console.log('cron error');
+            log('cron error');
             return 'error';
         }
     }

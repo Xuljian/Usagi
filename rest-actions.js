@@ -11,6 +11,8 @@ const { Mutex } = require('async-mutex');
 const agent = new https.Agent({ keepAlive: true })
 const fetch = require('node-fetch').default;
 
+const { log } = require('./utils/logger');
+
 // messageObj
 //{
 //    guildId: 'string'
@@ -108,7 +110,7 @@ exports.sendDMById = function (messageObj) {
 //}
 exports.sendMessage = function (messageObj) {
     if (messageObj.channelId == null) {
-        console.log('channel id required');
+        log('channel id required');
         return;
     }
 
@@ -227,7 +229,7 @@ exports.refreshGuildChannels = function (guildId, callback) {
 
 exports.sendMessageComplex = function (messageObj) {
     if (messageObj.channelId == null) {
-        console.log('channel id required');
+        log('channel id required');
         return;
     }
 
@@ -299,7 +301,7 @@ var findUserId = function (username) {
         }
     }
     if (found == null) {
-        console.log('user not found')
+        log('user not found')
     }
     return found;
 }
@@ -366,16 +368,16 @@ var executeRequest = function () {
                                     try {
                                         options.callback(i, options.callbackParams);
                                     } catch (e) {
-                                        console.log(e);
+                                        log(e);
                                     }
                                 }
                             } catch (i) {
-                                console.log('thrown from json function 2', i);
+                                log('thrown from json function 2', i);
                                 if (options.callback != null) {
                                     try {
                                         options.callback(null, options.callbackParams);
                                     } catch (e) {
-                                        console.log(e);
+                                        log(e);
                                     }
                                 }
                             }
@@ -387,13 +389,13 @@ var executeRequest = function () {
                     } else {
                         try {
                             let i = await o.json();
-                            console.log(`server returned ${o.statusText} with message\n`, i, options);
+                            log(`server returned ${o.statusText} with message\n`, i, options);
                         } catch (i) {
-                            console.log('thrown from json function 2', i);
+                            log('thrown from json function 2', i);
                         }
                     }
                 } catch (e) {
-                    console.log("Oh no", e);
+                    log("Oh no", e);
                 }
             }
         }

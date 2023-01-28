@@ -21,7 +21,7 @@ let USAGI_COMMANDS = {
 
 fs.readdirSync(__dirname)
     .filter(file => {
-        return file.indexOf('index') == -1 && file.indexOf('.js') > -1;
+        return file.indexOf('index') == -1 && file.indexOf('.js') > -1 && file.indexOf('.under-construction.js') === -1;
     }).map(file => {
         return file.substring(0, file.indexOf('.js'));
     }).forEach(file => {

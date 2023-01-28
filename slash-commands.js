@@ -5,6 +5,8 @@ const { timeoutChainer } = require('./utils/timeout-chainer');
 
 const { USAGI_INTERACTIONS } = require('./interactions');
 
+const { log } = require('./utils/logger');
+
 let version = "1.0.1";
 
 const AVAILABLE_SLASH_COMMANDS = Object.keys(USAGI_INTERACTIONS);
@@ -25,7 +27,7 @@ exports.initSlashCommand = function() {
             return;
         }
 
-        console.log("Registering commands");
+        log("Registering commands");
 
         repository.commandVersion = version;
 

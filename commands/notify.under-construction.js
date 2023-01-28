@@ -8,9 +8,9 @@ const prefix = usagiConstants.BOT_DATA.COMMAND_PREFIX;
 
 exports.process = function(data, args) {
     if (args == null || args === '' || args === '?') {
-        let description = '**Using Math\n\n**' +
-                            `\`\`${prefix}math <expression>\`\`\n\n` +
-                            'This command is to do....well math!\n' +
+        let description = '**Using Notify\n\n**' +
+                            `\`\`${prefix}notify <user> <certain message that you want to lookout for>\`\`\n\n` +
+                            '\n' +
                             '<expression> is be the math you want to do.' +
                             '\`\`\`+ for addition\n' +
                             '- for subtraction\n' +
@@ -20,7 +20,7 @@ exports.process = function(data, args) {
                             'in for searching existence of a string\`\`\`\n' +
                             'Example.\n' + 
                             `\`\`\`${prefix}math 1+1\n` +
-                            `${prefix}math 1+1+2+3/3*4**6 (got no idea the answer why don't you try out? Expression as complex as this works too)\n` +
+                            `${prefix}math 1+1+2+3/3*4**6 (got no idea the answer, why don't you try it out? Expression as complex as this works too)\n` +
                             `${prefix}math "hello" in "hello world" (this will search hello in hello world and will highlight the left hand side word in the right hand side word)\`\`\``
         restActions.sendMessage({
             interactionId: data.id,

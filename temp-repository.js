@@ -6,6 +6,8 @@ var restActions = null;
 const { USAGI_CONSTANTS } = require('./usagi.constants');
 const { timeoutChainer } = require('./utils/timeout-chainer');
 
+const { log } = require('./utils/logger');
+
 var hasChanges = true;
 
 let realTimeRepository = {
@@ -64,7 +66,7 @@ var registerUsersFromGuilds = function () {
 }
 
 let getEsentialData = function() {
-    return tempRepo = {
+    return {
         guilds: realTimeRepository.guilds,
         users: realTimeRepository.users,
         channels: realTimeRepository.channels,
@@ -173,7 +175,7 @@ var exportToFile = function (forced, callback) {
     if (hasChanges || forced) {
         fs.writeFile(dumpFilePath, prettyPrintData(), 'utf8', callback || ((a, b) => {
             if (a) {
-                console.log(a);
+                log(a);
                 return;
             }
         }))
@@ -228,6 +230,7 @@ let intervalReady = timeoutChainer(() => {
 
 let cleanupRepository = function() {
     delete realTimeRepository.registeredJobs;
+    // if this is called means the program is asked to "end" so the resume data is not needed because we do not know when it will come back on 
     realTimeRepository.resumeData = {
         sequenceId: null,
         sessionId: null
