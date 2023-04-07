@@ -140,7 +140,7 @@ let mainProcess = function() {
     };
 
     socket.onerror = function (error) {
-        log('onerror ' + socket.readyState);
+        log('onerror ' + error);
         //if (socket.readyState === WebSocket.CLOSED) {
         //    mainProcess();
         //}
