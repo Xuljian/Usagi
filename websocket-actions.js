@@ -13,7 +13,7 @@ let socket = null;
 let registerHeartbeatMutex = new Mutex();
 let heartbeatInterval = null;
 
-exports.end = function() {
+let internalEnd = function() {
     if (socket != null) {
         socket.onClose = null;
         socket.close();
@@ -21,10 +21,14 @@ exports.end = function() {
     }
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
     }
 }
 
+exports.end = internalEnd;
+
 let mainProcess = function() {
+    let ack = false;
     const zlib = require("zlib");
     const WebSocket = require('ws');
 
@@ -175,6 +179,7 @@ let mainProcess = function() {
                 break;
             }
             case 11: {
+                ack = true;
                 break;
             }
             case 7: {
@@ -224,7 +229,15 @@ let mainProcess = function() {
 
     var registerHeartbeat = function (interval) {
         log("from register heartbeat: ", interval);
+        socket.sendCustom(heartbeat);
         heartbeatInterval = setInterval(function () {
+            if (!ack) {
+                log("No ack from last heartbeat, closing and restart");
+                internalEnd();
+                registerHeartbeatMutex = new Mutex();
+                mainProcess();
+                return;
+            }
             socket.sendCustom(heartbeat);
         }, interval);
     }
