@@ -1,4 +1,4 @@
-const tempRepositoryFunc = require('../temp-repository');
+const tempRepositoryFunc = require('../repository');
 var { messageLogs } = require('../message-logs-storage');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 const restActions = require('../rest-actions');

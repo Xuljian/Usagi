@@ -2,7 +2,7 @@ const restAPIUrl = 'https://discord.com/api/v10';
 
 const usagiConstant = require('./usagi.constants').USAGI_CONSTANTS;
 
-const repo = require('./temp-repository');
+const repo = require('./repository');
 const realTimeRepository = repo.realTimeRepository;
 
 const https = require('https');

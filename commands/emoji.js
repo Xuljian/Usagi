@@ -1,6 +1,6 @@
 const restActions = require('../rest-actions');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
-const tempRepositoryFunc = require('../temp-repository');
+const tempRepositoryFunc = require('../repository');
 
 const prefix = usagiConstants.BOT_DATA.COMMAND_PREFIX;
 const realTimeRepository = tempRepositoryFunc.realTimeRepository;

@@ -1,4 +1,4 @@
-const repository = require('../temp-repository').realTimeRepository;
+const repository = require('../repository').realTimeRepository;
 const parser = require('cron-parser');
 const moment = require('moment');
 const restActions = require('../rest-actions');

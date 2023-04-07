@@ -32,7 +32,7 @@ let mainProcess = function() {
     const zlib = require("zlib");
     const WebSocket = require('ws');
 
-    const tempRepositoryFunc = require('./temp-repository');
+    const tempRepositoryFunc = require('./repository');
     const realTimeRepository = tempRepositoryFunc.realTimeRepository;
 
     slashCommandInit.initSlashCommand();

@@ -1,5 +1,5 @@
 const restActions = require('../rest-actions');
-const tempRepositoryFunc = require('../temp-repository');
+const tempRepositoryFunc = require('../repository');
 var { uiMessageLogs, messageLogs } = require('../message-logs-storage');
 
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;

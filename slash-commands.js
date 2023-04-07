@@ -1,5 +1,5 @@
 const restActions = require('./rest-actions');
-const tempRepositoryFunc = require('./temp-repository');
+const tempRepositoryFunc = require('./repository');
 const repository = tempRepositoryFunc.realTimeRepository;
 const { timeoutChainer } = require('./utils/timeout-chainer');
 

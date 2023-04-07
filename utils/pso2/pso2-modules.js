@@ -53,6 +53,9 @@ exports.getPayload = function(name, ext, exact, fix, callback) {
 
 let processRequest = async function(name, num, ext, exact, fix, callback) {
     const executor = require('child_process');
+    const promisify = require('util.promisify');
+    executor.exec = promisify(executor.exec);
+
     let regex = new RegExp(`^.*\\.*${name}.*\.(${regexExtensions})$`);
     if (exact) {
         regex = new RegExp(`^.*\\.*${name}$`);
@@ -70,33 +73,37 @@ let processRequest = async function(name, num, ext, exact, fix, callback) {
         }
         
         let command = `${destinationFolder}\\ice.exe -o ${destinationFolder}\\${num}\\${ice}_ext ${destinationFolder}\\${num}\\${ice}`;
-        executor.exec(command, async (subSubErr, res) => {
-            if (subSubErr) {
-                callback("not null");
-                return;
+        let res = null;
+        try {
+            res = executor.exec(command);
+            res = res.stdout;
+        } catch (subSubErr) {
+            callback("out_of_order");
+            return;
+        }
+
+        if (res.indexOf('FAILED') > -1) {
+            callback("out_of_order");
+            return;
+        }
+        let inputFilePath = `${destinationFolder}\\${num}\\${ice}_ext\\${exactFilename}`;
+        let extension = exactFilename.split('.')[exactFilename.split('.').length - 1];
+        let outputPath = `${destinationFolder}\\${num}`;
+        switch (extension) {
+            case "cml": {
+                await processConversionCml(inputFilePath, outputPath, ext, fix, uploadFile, callback);
+                break;
             }
-            if (res.indexOf('FAILED') > -1) {
-                callback("not null");
-                return;
+            default: {
+                await uploadFile({
+                    cleanupPath: outputPath,
+                    newPath: inputFilePath,
+                    newExtension: extension
+                }, callback)
+                break;
             }
-            let inputFilePath = `${destinationFolder}\\${num}\\${ice}_ext\\${exactFilename}`;
-            let extension = exactFilename.split('.')[exactFilename.split('.').length - 1];
-            let outputPath = `${destinationFolder}\\${num}`;
-            switch (extension) {
-                case "cml": {
-                    processConversionCml(inputFilePath, outputPath, ext, fix, uploadFile, callback);
-                    break;
-                }
-                default: {
-                    await uploadFile({
-                        cleanupPath: outputPath,
-                        newPath: inputFilePath,
-                        newExtension: extension
-                    }, callback)
-                    break;
-                }
-            }
-        })
+        }
+
     } else {
         callback(null);
     }
@@ -104,7 +111,7 @@ let processRequest = async function(name, num, ext, exact, fix, callback) {
 
 let uploadFile = async function(subDat, callback) {
     if (subDat.error) {
-        callback("not null");
+        callback("out_of_order");
         await cleanup(subDat.cleanupPath);
     } else {
         let exactFilename = subDat.newPath.split('\\')[subDat.newPath.split('\\').length - 1];
@@ -113,7 +120,7 @@ let uploadFile = async function(subDat, callback) {
         try {
             data = await fs.readFile(subDat.newPath);
         } catch (e) {
-            callback("not null");
+            callback("out_of_order");
             await cleanup(subDat.cleanupPath);
             return;
         }
@@ -135,8 +142,11 @@ let cleanup = async function(cleanupPath, callback) {
     })
 }
 
-let processConversionCml = function(inputFilePath, outputPath, extension, fix, callback, mainCallback) {
+let processConversionCml = async function(inputFilePath, outputPath, extension, fix, callback, mainCallback) {
     const executor = require('child_process');
+    const promisify = require('util.promisify');
+    executor.exec = promisify(executor.exec);
+
     if (extension == null || extension === '' || allowConversionExtension.indexOf(extension) < 0) {
         callback({
             newPath: `${inputFilePath}`,
@@ -148,29 +158,33 @@ let processConversionCml = function(inputFilePath, outputPath, extension, fix, c
     let exactFilename = inputFilePath.split('\\')[inputFilePath.split('\\').length - 1];
     let filename = exactFilename.split('.')[0];
     let command = `\"${destinationFolder}\\SalonTool\\NGS Salon Tool.exe\" -o ${outputPath}\\${filename}.${extension} -ext ${extension} -i ${inputFilePath} ${fix ? '-na': ''} -cli`;
-    executor.exec(command, (subSubErr, res) => {
-        if (subSubErr) {
-            callback({
-                error: true
-            }, mainCallback);
-            return;
-        }
-        if (res.length > 500) {
-            callback({
-                error: true
-            }, mainCallback);
-            return;
-        }
-        if (extension === 'default' && res.indexOf("Output: " > -1)) {
-            let fullPath = res.substring(8, res.length);
-            extension = fullPath.split('\\')[fullPath.split('\\').length - 1].split('.')[1];
-        }
+
+    let res = null;
+    try {
+        res = await executor.exec(command);
+        res = res.stdout;
+    } catch (subSubErr) {
         callback({
-            newPath: `${outputPath}\\${filename}.${extension}`,
-            newExtension: `${extension}`,
-            cleanupPath: outputPath
-        }, mainCallback)
-    })
+            error: true
+        }, mainCallback);
+        return;
+    }
+
+    if (res.length > 500) {
+        callback({
+            error: true
+        }, mainCallback);
+        return;
+    }
+    if (extension === 'default' && res.indexOf("Output: " > -1)) {
+        let fullPath = res.substring(8, res.length);
+        extension = fullPath.split('\\')[fullPath.split('\\').length - 1].split('.')[1];
+    }
+    callback({
+        newPath: `${outputPath}\\${filename}.${extension}`,
+        newExtension: `${extension}`,
+        cleanupPath: outputPath
+    }, mainCallback)
 }
 
 let isReady = true;
