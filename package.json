@@ -1,14 +1,4 @@
 {
-    "name": "usagi-bot",
-    "version": "0.0.0",
-    "description": "UsagiBot",
-    "main": "usagi-gui.js",
-    "author": {
-        "name": "Xuljian"
-    },
-    "scripts": {
-        "start": "electron ."
-    },
     "dependencies": {
         "async-mutex": "^0.4.0",
         "cron-parser": "^4.7.1",
