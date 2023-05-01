@@ -1,0 +1,141 @@
+const tempfs = require('fs');
+const fs = tempfs.promises;
+
+const { By, Builder } = require('selenium-webdriver');
+const chrome = require('selenium-webdriver/chrome');
+
+const { USAGI_CONSTANTS } = require('../usagi.constants'); 
+const { sleeper } = require('../utils/sleeper');
+const { timeoutChainer } = require('../utils/timeout-chainer');
+const jsonPath = USAGI_CONSTANTS.BOT_DUMP_PATH + "/scrapper.json";
+const twitterUrl = "https://twitter.com"
+
+let cache = {};
+
+const chromeOptions = new chrome.Options();
+chromeOptions.addArguments("headless");
+
+const chromeService = new chrome.ServiceBuilder(USAGI_CONSTANTS.CHROME_DRIVER_PATH);
+
+let task = null;
+
+let getId = function(url) {
+    let regStr = /.*\/status\/(\d+)/
+    let res = regStr.exec(url);
+    return res[1];
+}
+
+let signOnKiller = async function(driver) {
+    await driver.executeScript("document.querySelector('div[data-testid=\"BottomBar\"]').remove()");
+}
+
+let notificationKiller = async function(driver) {
+    let elements = await driver.findElements(By.css('div[data-testid=\"sheetDialog\"]'));
+
+    if (elements.length > 0) {
+        let el = await elements[0].findElement(By.css('div > div > div:first-child > div > div > svg'))
+        await el.click();
+        await sleeper(1000);
+    }
+}
+
+let init = async function() {
+    if (tempfs.existsSync(jsonPath)) {
+        let json = await fs.readFile(jsonPath, { encoding: 'utf-8'} );
+        cache = JSON.parse(json);
+    }
+
+    USAGI_CONSTANTS.TWITTER_FOLLOWING.forEach(i => {
+        if (cache[i] == null) {
+            cache[i] = { 
+                pinned: [],
+                lastId: null
+            }
+        }
+    })
+}
+
+let getArticleId = async function(article) {
+    let anchorEl = await article.findElement(By.css("a[href*=\"status\"]"));
+    let artUrl = await anchorEl.getAttribute("href");
+    artUrl = twitterUrl + artUrl
+
+    return getId(artUrl);
+}
+
+let scrape = async function() {
+    await init();
+    let driver = new Builder()
+        .forBrowser('chrome')
+        .setChromeOptions(chromeOptions)
+        .setChromeService(chromeService)
+        .build();
+
+    for (url in USAGI_CONSTANTS.TWITTER_FOLLOWING) {
+        driver.get(url);
+        await sleeper(USAGI_CONSTANTS.SCRAPE_WAIT_TIME * 1000);
+
+        await notificationKiller(driver);
+        await signOnKiller(driver);
+
+        let visitedArticles = [];
+
+        let foundId = false;
+
+        while (!foundId) {
+            let articles = await driver.findElements(By.css("article"));
+
+            for (article in articles) {
+                let articleId = await article.getId();
+                if (visitedArticles.indexOf(articleId) > -1) {
+                    continue;
+                }
+
+                let innerTxt = await article.getAttribute("innerText");
+
+                if (innerTxt.startsWith("Pinned Tweet")) {
+                    // check pinned tweet storage instead
+                    await notificationKiller(driver);
+
+                    await driver.executeScript('arguments[0].scrollIntoView(true, {behavior:"instant"})');
+                    await sleeper(500);
+
+                    let id = getArticleId(article);
+
+                    if (cache[url].pinned.indexOf(id) == -1) {
+                        cache[url].pinned.push(id);
+                        // discord stuff
+                    }
+                } else {
+                    let id = getArticleId(article);
+
+                    if (cache[url].lastId != id) {
+                        cache[url].lastId = id;
+                        // discord stuff
+                    }
+
+                    foundId = true;
+                }
+            }
+        }
+    }
+    let cacheJson = JSON.stringify(cache);
+    await fs.writeFile(jsonPath, cacheJson, { encoding: 'utf-8' });
+}
+
+let main = function() {
+    task = timeoutChainer(scrape, 60000);
+}
+
+let end = function() {
+    if (task != null) {
+        task.stop = true;
+        task = null;
+        cache = {};
+    }
+}
+
+exports.twitter = {
+    execute: main,
+    end: end
+}
