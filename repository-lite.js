@@ -4,15 +4,12 @@ const { USAGI_CONSTANTS } = require('./usagi.constants');
 const dumpFilePath = USAGI_CONSTANTS.BOT_DUMP_PATH + '\\dump.txt';
 
 const { log } = require('./utils/logger');
+const { timeoutChainer } = require('./utils/timeout-chainer');
 
 let realTimeRepository = {
     fileInit: false,
     debug: false
 }
-
-loopers = [
-    timeoutChainer(checkDebug, 5000),
-]
 
 let checkDebug = async function() {
     let init = realTimeRepository.debug;
@@ -21,7 +18,7 @@ let checkDebug = async function() {
     } else {
         realTimeRepository.debug = false;
     }
-    if (init == realTimeRepository.debug) {
+    if (init != realTimeRepository.debug) {
         if (realTimeRepository.debug) {
             log("Debug enabled");
         } else {
@@ -31,6 +28,10 @@ let checkDebug = async function() {
 
     realTimeRepository.fileInit = true;
 }
+
+loopers = [
+    timeoutChainer(checkDebug, 5000),
+]
 
 // currently not used
 // in case if needed in future

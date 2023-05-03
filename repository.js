@@ -197,7 +197,7 @@ var importFromFile = function () {
             realTimeRepository.fileInit = true;
             return;
         }
-        let repo = JSON.parse(b);
+        let repo = JSON.parse(content);
         realTimeRepository.bots = repo.bots;
         realTimeRepository.guilds = repo.guilds;
         realTimeRepository.channels = repo.channels;
@@ -234,10 +234,18 @@ let intervalReady = timeoutChainer(() => {
 });
 
 let checkDebug = async function() {
+    let init = realTimeRepository.debug;
     if (fs.existsSync(USAGI_CONSTANTS.BOT_DUMP_PATH + "\\debug")) {
         realTimeRepository.debug = true;
     } else {
         realTimeRepository.debug = false;
+    }
+    if (init != realTimeRepository.debug) {
+        if (realTimeRepository.debug) {
+            log("Debug enabled");
+        } else {
+            log("Debug disabled");
+        }
     }
 }
 
