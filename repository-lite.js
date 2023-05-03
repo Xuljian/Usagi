@@ -46,7 +46,7 @@ var importFromFile = function () {
             realTimeRepository.fileInit = true;
             return;
         }
-        let repo = JSON.parse(b);
+        let repo = JSON.parse(content);
     })
 }
 
