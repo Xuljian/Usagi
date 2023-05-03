@@ -3,12 +3,17 @@
  * intervals can be a function or a number
  * number is in MS for when it should re-execute
  * function must return a number in MS for when it should re-execute
+ * firstExecute is a boolean to know if it needs to immediately execute it the first time
  */
-exports.timeoutChainer = function (work, intervals) {
+exports.timeoutChainer = async function (work, intervals, firstExecute) {
     if ((typeof intervals) !== "function") {
         intervals = () => {
             return intervals;
         }
+    }
+
+    if (firstExecute || false) {
+        await work();
     }
 
     let timeout = null;
