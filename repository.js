@@ -1,10 +1,10 @@
 const fs = require('fs');
 
-const dumpFilePath = 'C:\\Data\\UsagiBotDump\\dump.txt';
-
 var restActions = null;
 const { USAGI_CONSTANTS } = require('./usagi.constants');
 const { timeoutChainer } = require('./utils/timeout-chainer');
+
+const dumpFilePath = USAGI_CONSTANTS.BOT_DUMP_PATH + '\\dump.txt';
 
 const { log } = require('./utils/logger');
 
@@ -19,6 +19,7 @@ let realTimeRepository = {
     fileInit: false,
     hasRegisteredCommand: false,
     commandVersion: null,
+    debug: false,
     channelIgnore: [],
     guildIgnore: [],
     emojiChannel: [],
@@ -87,8 +88,10 @@ let getEsentialData = function() {
 
 exports.getEsentialData = getEsentialData;
 
-var prettyPrintData = function () {
-    return JSON.stringify(getEsentialData(), null, 4);
+let getData = function () {
+    if (realTimeRepository.debug)
+        return JSON.stringify(getEsentialData(), null, 4);
+    return JSON.stringify(getEsentialData());
 }
 
 exports.getGuildName = function (id) {
@@ -173,7 +176,7 @@ var updateGuilds = function () {
 
 var exportToFile = function (forced, callback) {
     if (hasChanges || forced) {
-        fs.writeFile(dumpFilePath, prettyPrintData(), 'utf8', callback || ((a, b) => {
+        fs.writeFile(dumpFilePath, getData(), 'utf8', callback || ((a, b) => {
             if (a) {
                 log(a);
                 return;
@@ -186,6 +189,7 @@ var exportToFile = function (forced, callback) {
 var importFromFile = function () {
     fs.readFile(dumpFilePath, 'utf8', (a, b) => {
         if (a) {
+            log(a);
             realTimeRepository.fileInit = true;
             return;
         }
@@ -221,12 +225,21 @@ let intervalReady = timeoutChainer(() => {
     if (realTimeRepository.fileInit) {
         loopers = [
             timeoutChainer(registerUsersFromGuilds, 1000),
-            timeoutChainer(updateGuilds, 10000),
+            //timeoutChainer(updateGuilds, 10000),
             timeoutChainer(exportToFile, 5000),
+            timeoutChainer(checkDebug, 5000),
         ]
         intervalReady.stop = true;
     }
 });
+
+let checkDebug = async function() {
+    if (fs.existsSync(USAGI_CONSTANTS.BOT_DUMP_PATH + "\\debug")) {
+        realTimeRepository.debug = true;
+    } else {
+        realTimeRepository.debug = false;
+    }
+}
 
 let cleanupRepository = function() {
     delete realTimeRepository.registeredJobs;
