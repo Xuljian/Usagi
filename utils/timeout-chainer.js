@@ -1,3 +1,5 @@
+const { sleeper } = require("./sleeper");
+
 /*
  * work is a function to do the work for
  * intervals can be a function or a number
@@ -8,27 +10,28 @@
 exports.timeoutChainer = function (work, intervals, firstExecute) {
     if ((typeof intervals) !== "function") {
         intervals = () => {
-            return intervals;
+            return intervals || 500;
         }
     }
 
-    if (firstExecute || false) {
-        setTimeout(async () => {
-            await work();
-        }, 0)
-    }
-
+    let initialComplete = false;
     let timeout = null;
     let stopper = {
         stop: false
     }
     let internalLooper = () => {
+        let interval = intervals();
+        if (firstExecute && !initialComplete) {
+            interval = 0;
+            initialComplete = true;
+        }
+
         timeout = setTimeout(async () => {
             await work();
             clearTimeout(timeout);
             if (!stopper.stop)
                 internalLooper();
-        }, intervals() || 500)
+        }, interval)
     }
     internalLooper();
     return stopper;
