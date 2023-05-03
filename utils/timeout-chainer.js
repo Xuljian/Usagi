@@ -6,9 +6,8 @@
  * firstExecute is a boolean to know if it needs to immediately execute it the first time
  */
 exports.timeoutChainer = function (work, intervals, firstExecute) {
-    let internalIntervals = intervals;
     if ((typeof intervals) !== "function") {
-        internalIntervals = () => {
+        intervals = () => {
             return intervals;
         }
     }
@@ -16,7 +15,6 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
     if (firstExecute || false) {
         setTimeout(async () => {
             await work();
-            clearTimeout(timeout);
         }, 0)
     }
 
@@ -25,13 +23,12 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
         stop: false
     }
     let internalLooper = () => {
-        console.log(internalIntervals())
         timeout = setTimeout(async () => {
             await work();
             clearTimeout(timeout);
             if (!stopper.stop)
                 internalLooper();
-        }, internalIntervals() || 500)
+        }, intervals() || 500)
     }
     internalLooper();
     return stopper;
