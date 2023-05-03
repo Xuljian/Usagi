@@ -5,7 +5,7 @@
  * function must return a number in MS for when it should re-execute
  * firstExecute is a boolean to know if it needs to immediately execute it the first time
  */
-exports.timeoutChainer = async function (work, intervals, firstExecute) {
+exports.timeoutChainer = function (work, intervals, firstExecute) {
     if ((typeof intervals) !== "function") {
         intervals = () => {
             return intervals;
@@ -13,7 +13,10 @@ exports.timeoutChainer = async function (work, intervals, firstExecute) {
     }
 
     if (firstExecute || false) {
-        await work();
+        setTimeout(async () => {
+            await work();
+            clearTimeout(timeout);
+        }, 0)
     }
 
     let timeout = null;

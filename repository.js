@@ -187,13 +187,13 @@ var exportToFile = function (forced, callback) {
 }
 
 var importFromFile = function () {
-    fs.readFile(dumpFilePath, 'utf8', (a, b) => {
-        if (a) {
-            log(a);
+    fs.readFile(dumpFilePath, 'utf8', (error, content) => {
+        if (error) {
+            log(error);
             realTimeRepository.fileInit = true;
             return;
         }
-        if ((b || '').trim() == '') {
+        if ((content || '').trim() == '') {
             realTimeRepository.fileInit = true;
             return;
         }
