@@ -9,7 +9,7 @@ This repo is not executable, go to the 2 repo below.
 
 ## Explanation
 <h3>usagi-constants.js</h3>
-This is where the config for API token and other stuff goes, the first few lines is needed to be filled. The default prefix for this bot is "#!"<br/>
+This is where the config for API token and other stuff goes, the first few lines is needed to be filled especially the BOT_TOKEN. The default prefix for this bot is "#!"<br/>
 <h3>event-types</h3>
 This folder consists of js files that are tied to the events that discord gateway will fire, the name of the files are used to match against the events that is sent from discord. I only used some of the events, you can add more based on the events in the discord API<br/>
 <h3>commands</h3>
