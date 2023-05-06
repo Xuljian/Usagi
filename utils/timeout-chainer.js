@@ -13,6 +13,8 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
         internal = function () {
             return (intervals || 500);
         }
+    } else {
+        internal = intervals
     }
     
     let initialComplete = false;
