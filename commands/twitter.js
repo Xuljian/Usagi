@@ -201,9 +201,15 @@ let sendToAllServers = async function() {
 }
 
 exports.process = function(data, args) {
-    if (args == null || args === '' || args === '?') {
+    if (args == null || args === '' || args === '?' || args.trim() === 'help') {
         let description = '**Using Twitter\n\n**' +
-                            `\`\`${prefix}twitter <command> <url>\`\`\n\n`
+                            `\`\`${prefix}twitter <command> <url>\`\`\n\n` + 
+                            'This command is for getting any updates from a twitter page.\n' +
+                            'If there are changes in \"Pinned\" tweet it will also be picked up\n\n' +
+                            '<command> refers to either \"register\" or \"unregister\"\n' +
+                            '<url> refers to the url of the twitter page\n\n' + 
+                            'Example:\n' + 
+                            'https://twitter.com/NASA - for NASA\'s twitter\n\n'
         restActions.sendMessage({
             interactionId: data.id,
             interactionToken: data.token,
