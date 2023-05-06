@@ -8,19 +8,20 @@ const { sleeper } = require("./sleeper");
  * firstExecute is a boolean to know if it needs to immediately execute it the first time
  */
 exports.timeoutChainer = function (work, intervals, firstExecute) {
+    let internal = null;
     if ((typeof intervals) !== "function") {
-        intervals = () => {
-            return intervals || 500;
+        internal = function () {
+            return (intervals || 500);
         }
     }
-
+    
     let initialComplete = false;
     let timeout = null;
     let stopper = {
         stop: false
     }
     let internalLooper = () => {
-        let interval = intervals();
+        let interval = internal();
         if (firstExecute && !initialComplete) {
             interval = 0;
             initialComplete = true;
