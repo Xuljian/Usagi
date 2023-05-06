@@ -359,6 +359,7 @@ let scrape = async function(url) {
                 }
 
                 foundId = true;
+                break;
             }
         }
 
