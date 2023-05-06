@@ -11,7 +11,7 @@ const { Mutex } = require('async-mutex');
 const agent = new https.Agent({ keepAlive: true })
 const fetch = require('node-fetch').default;
 
-const { log } = require('./utils/logger');
+const { log, logTrace } = require('./utils/logger');
 
 // messageObj
 //{
@@ -125,6 +125,7 @@ exports.sendMessage = function (messageObj) {
         url: restAPIUrl + `/channels/${messageObj.channelId}/messages`,
         method: 'post',
         guildId: messageObj.guildId,
+        callback: messageObj.callback,
         body: JSON.stringify({
             content: messageObj.message,
             message_reference: messageObj.messageReference,
@@ -372,30 +373,29 @@ var executeRequest = function () {
                                     }
                                 }
                             } catch (i) {
-                                log('thrown from json function 2', i);
+                                logTrace('thrown from json function 2', i);
                                 if (options.callback != null) {
                                     try {
                                         options.callback(null, options.callbackParams);
                                     } catch (e) {
-                                        log(e);
+                                        logTrace(e);
                                     }
                                 }
                             }
-                        } else {
-                            if (options.callback != null && typeof options.callback === 'function') {
-                                options.callback(options.callbackParams);
-                            }
+                        } else if (options.callback != null && typeof options.callback === 'function') {
+                            options.callback(options.callbackParams);
                         }
                     } else {
                         try {
                             let i = await o.json();
-                            log(`server returned ${o.statusText} with message\n`, i, options);
+                            logTrace(`server returned ${o.status} with status text ${o.statusText} with message\n`, JSON.stringify(i), options);
+                            options.callback({ error: i, status: o.status }, options.callbackParams);
                         } catch (i) {
-                            log('thrown from json function 2', i);
+                            logTrace('thrown from json function 2', i);
                         }
                     }
                 } catch (e) {
-                    log("Oh no", e);
+                    logTrace("Oh no", e);
                 }
             }
         }

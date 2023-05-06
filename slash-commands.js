@@ -7,7 +7,7 @@ const { USAGI_INTERACTIONS } = require('./interactions');
 
 const { log } = require('./utils/logger');
 
-let version = "1.0.1";
+let version = "1.0.2";
 
 const AVAILABLE_SLASH_COMMANDS = Object.keys(USAGI_INTERACTIONS);
 exports.AVAILABLE_SLASH_COMMANDS = AVAILABLE_SLASH_COMMANDS;
@@ -33,6 +33,7 @@ exports.initSlashCommand = function() {
 
         restActions.bulkUpdateSlashCommand(slashCommandObjs, () => {
             repository.hasRegisteredCommand = true;
+            log("Commands registered");
         });
 
         looper.stop = true;

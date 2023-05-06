@@ -5,10 +5,32 @@ const { USAGI_CONSTANTS } = require('./usagi.constants');
 const { timeoutChainer } = require('./utils/timeout-chainer');
 
 const dumpFilePath = USAGI_CONSTANTS.BOT_DUMP_PATH + '\\dump.txt';
+const moment = require('moment');
 
 const { log } = require('./utils/logger');
 
 var hasChanges = true;
+
+let lastExport = null;
+
+// twitterModule field
+/*
+ * its a dynamic object that when created it is in a form as below
+ * {
+ *     twitter-url: {
+ *         server-id: {
+ *             channelIds: []
+ *         },
+ *         pinned: [ids...]
+ *         lastId: ""
+ *     }
+ * }
+ * server-id is the id of the server in discord
+ * channelIds are the array of channel in the server in discord
+ * twitter-url refers to the url that the server wants to follow
+ * - pinned are the tweet ids that are pinned
+ * - lastId is the id of the latest tweet
+ */
 
 let realTimeRepository = {
     guilds: {},
@@ -19,6 +41,7 @@ let realTimeRepository = {
     fileInit: false,
     hasRegisteredCommand: false,
     commandVersion: null,
+    twitterModule: {},
     debug: false,
     channelIgnore: [],
     guildIgnore: [],
@@ -76,6 +99,7 @@ let getEsentialData = function() {
         fileInit: realTimeRepository.fileInit,
         hasRegisteredCommand: realTimeRepository.hasRegisteredCommand,
         commandVersion: realTimeRepository.commandVersion,
+        twitterModule: realTimeRepository.twitterModule,
         channelIgnore: realTimeRepository.channelIgnore,
         emojiChannel: realTimeRepository.emojiChannel,
         guildIgnore: realTimeRepository.guildIgnore,
@@ -153,34 +177,14 @@ exports.userAllowKick = function (guildId, executorId) {
     return result;
 }
 
-var updateGuilds = function () {
-    restActions = restActions || require('./rest-actions');
-    let guilds = realTimeRepository.guilds;
-    for (var key in guilds) {
-        if (Object.prototype.hasOwnProperty.call(guilds, key)) {
-            if (guilds[key] != null) {
-                restActions.refreshGuildDetails(key, (data) => {
-                    guilds[data.id] = data;
-                    restActions.refreshGuildMembers(data.id, (subData, callbackParams) => {
-                        guilds[callbackParams].members = subData;
-                        restActions.refreshGuildChannels(callbackParams, (subSubData, callbackParams) => {
-                            guilds[callbackParams].channels = subSubData;
-                            hasChanges = true;
-                        })
-                    })
-                })
-            }
-        }
-    }
-}
-
 var exportToFile = function (forced, callback) {
-    if (hasChanges || forced) {
+    if (hasChanges || forced || lastExport == null || moment().utc().diff(lastExport) >= 60000) {
         fs.writeFile(dumpFilePath, getData(), 'utf8', callback || ((a, b) => {
             if (a) {
                 log(a);
                 return;
             }
+            lastExport = moment().utc();
         }))
         hasChanges = false;
     }
@@ -208,6 +212,7 @@ var importFromFile = function () {
         realTimeRepository.archiveListenChannel = repo.archiveListenChannel || {};
         realTimeRepository.hasRegisteredCommand = repo.hasRegisteredCommand;
         realTimeRepository.commandVersion = repo.commandVersion;
+        realTimeRepository.twitterModule = repo.twitterModule || {};
         realTimeRepository.jobs = repo.jobs || [];
         realTimeRepository.fileInit = true;
         realTimeRepository.guildIgnore = repo.guildIgnore;
@@ -225,7 +230,6 @@ let intervalReady = timeoutChainer(() => {
     if (realTimeRepository.fileInit) {
         loopers = [
             timeoutChainer(registerUsersFromGuilds, 1000),
-            //timeoutChainer(updateGuilds, 10000),
             timeoutChainer(exportToFile, 5000),
             timeoutChainer(checkDebug, 5000),
         ]

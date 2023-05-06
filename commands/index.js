@@ -29,4 +29,13 @@ fs.readdirSync(__dirname)
         USAGI_COMMANDS[file] = require(__dirname + '/' + file + '.js');
     })
 
+let end = function() {
+    Object.keys(USAGI_COMMANDS).forEach((command) => {
+        if (USAGI_COMMANDS[command].end != null) {
+            USAGI_COMMANDS[command].end();
+        }
+    })
+}
+
 exports.USAGI_COMMANDS = USAGI_COMMANDS;
+exports.end = end;

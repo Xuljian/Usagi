@@ -54,11 +54,19 @@ let mainProcess = async function(data, args) {
         if(!isNaN(parseInt(emojiId))) {
             restActions.deleteEmoji(data.guild_id, emojiId, (response, callbackParams) => {
                 if (callbackParams.emojiId == emojiId && callbackParams.guildId == data.guild_id) {
-                    restActions.sendMessage({
-                        guildId: data.guild_id,
-                        channelId: data.channel_id,
-                        message: `Emoji deleted`
-                    })
+                    if (response.error != null) {
+                        restActions.sendMessage({
+                            guildId: data.guild_id,
+                            channelId: data.channel_id,
+                            message: `Failed to delete emoji`
+                        })
+                    } else {
+                        restActions.sendMessage({
+                            guildId: data.guild_id,
+                            channelId: data.channel_id,
+                            message: `Emoji deleted`
+                        })
+                    }
                 }
             });
         }
@@ -89,6 +97,14 @@ let mainEmojiProcessor = async function(data, buffer, emojiName) {
             guildId: data.guild_id,
             messageId: data.id,
             callback: (data, options) => {
+                if (data.error != null) {
+                    restActions.sendMessage({
+                        guildId: data.guild_id,
+                        channelId: options.channelId,
+                        message: `Failed to add emoji`
+                    })
+                    return;
+                }
                 let emojiStringPrefix = ':';
                 if (mimeMapping[o.mime] == 'gif') {
                     emojiStringPrefix = 'a:';
