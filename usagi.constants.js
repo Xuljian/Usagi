@@ -2,16 +2,13 @@ exports.USAGI_CONSTANTS = {
     BOT_DATA: {
         CLIENT_ID: "",
         BOT_TOKEN: "",
-        EMBED_COLOR_HEX: null,
+        EMBED_COLOR_HEX: 16731558,
         COMMAND_PREFIX: "#!"
     },
 
     MAX_IMAGE_UPLOAD_SIZE: 262144,
     BOT_DUMP_PATH: '',
     CHROME_DRIVER_PATH: '',
-
-    TWITTER_FOLLOWING: [],
-
     SCRAPE_WAIT_TIME: 8,
     
     PERMISSIONS: {
