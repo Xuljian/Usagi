@@ -207,9 +207,12 @@ exports.process = function(data, args) {
                             'This command is for getting any updates from a twitter page.\n' +
                             'If there are changes in \"Pinned\" tweet it will also be picked up\n\n' +
                             '<command> refers to either \"register\" or \"unregister\"\n' +
-                            '<url> refers to the url of the twitter page\n\n' + 
-                            'Example:\n' + 
-                            'https://twitter.com/NASA - for NASA\'s twitter\n\n'
+                            '<url> refers to the url of the twitter account\n' + 
+                            'Example Url:\n' + 
+                            'https://twitter.com/NASA - for NASA\'s twitter\n\n' + 
+                            'Example usage:\n' +
+                            `\`\`${prefix}twitter register https://twitter.com/NASA\`\`\n\n`
+                            
         restActions.sendMessage({
             interactionId: data.id,
             interactionToken: data.token,
@@ -285,15 +288,17 @@ exports.process = function(data, args) {
                 return;
             }
             cacheMutex.runExclusive(() => {
-                if (cache[url] == null) {
+                if (cache[url] == null || cache[url][data.guild_id] == null || cache[url][data.guild_id].channelIds.indexOf(data.channel_id) === -1) {
+                    restActions.sendMessage({
+                        interactionId: data.id,
+                        interactionToken: data.token,
+                        guildId: data.guild_id,
+                        channelId: data.channel_id,
+                        message: `Url is not registered`
+                    });
                     return;
                 }
-                if (cache[url][data.guild_id] == null) {
-                    return;
-                }
-                if (cache[url][data.guild_id].channelIds.indexOf(data.channel_id) === -1) {
-                    return;
-                }
+
                 let channelIds = cache[url][data.guild_id].channelIds;
                 channelIds.splice(channelIds.indexOf(data.channel_id), 1);
                 restActions.sendMessage({
