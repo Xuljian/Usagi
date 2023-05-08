@@ -125,7 +125,7 @@ let init = async function() {
 
             let chainer = timeoutChainer(async () => {
                 await scrape(url);
-            }, 60000, true);
+            }, 300000, true);
             
             tasks[url] = chainer;
         }
