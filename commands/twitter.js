@@ -169,6 +169,7 @@ let cleanup = async function() {
         });
     
     for (let x = 0; x != folders.length; x++) {
+        let path = folders[x];
         await fs.rm(path, { force: true, recursive: true });
     }
 }
