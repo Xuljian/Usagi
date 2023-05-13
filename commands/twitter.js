@@ -401,6 +401,8 @@ let scrape = async function(url) {
 
     await driver.quit();
 
+    await sleeper(10000);
+
     await cleanup();
 
     await postScrapeCleaner();
