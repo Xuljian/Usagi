@@ -163,7 +163,7 @@ let getArticleUrl = async function(article) {
 let cleanup = async function() {
     let folders = tempfs.readdirSync(process.env.LOCALAPPDATA + "/temp")
         .filter((folder) => {
-            return /.*scoped\_dir.*/.exec(folder) != null;
+            return /scoped\_dir.*/.exec(folder) != null;
         }).map((folder) => {
             return process.env.LOCALAPPDATA + "/temp/" + folder;
         });
