@@ -159,6 +159,20 @@ let getArticleUrl = async function(article) {
     return artUrl;
 }
 
+// Workaround for handling webdriver issue with temp files not deleted
+let cleanup = async function() {
+    let folders = tempfs.readdirSync(process.env.LOCALAPPDATA + "/temp")
+        .filter((folder) => {
+            return /.*scoped\_dir.*/.exec(folder) != null;
+        }).map((folder) => {
+            return process.env.LOCALAPPDATA + "/temp/" + folder;
+        });
+    
+    for (let x = 0; x != folders.length; x++) {
+        await fs.rm(path, { force: true, recursive: true });
+    }
+}
+
 // Proper URL cleanup if there are new stuff on twitter following
 let sendToAllServers = async function() {
     if (twitterUrlObjs.length == 0) return;
@@ -382,7 +396,11 @@ let scrape = async function(url) {
 
     cache[url].pinned = fullPinned;
 
+    await driver.close();
+
     await driver.quit();
+
+    await cleanup();
 
     await postScrapeCleaner();
 }
