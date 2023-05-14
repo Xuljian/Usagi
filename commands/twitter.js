@@ -12,6 +12,7 @@ const { realTimeRepository } = require('../repository');
 const { Mutex } = require('async-mutex');
 
 const restActions = require('../rest-actions');
+const { log } = require('../utils/logger');
 
 let cache = {};
 
@@ -170,7 +171,11 @@ let cleanup = async function() {
     
     for (let x = 0; x != folders.length; x++) {
         let path = folders[x];
-        await fs.rm(path, { force: true, recursive: true });
+        try {
+            await fs.rm(path, { force: true, recursive: true });
+        } catch (ex) {
+            log("Unable to delete " + path + " with exception " + ex);
+        }
     }
 }
 
@@ -351,52 +356,56 @@ let scrape = async function(url) {
 
     let fullPinned = [];
 
-    while (!foundId) {
-        let articles = await driver.findElements(By.css("article"));
-
-        for (let y = 0; y != articles.length; y++) {
-            let article = articles[y]; 
-            let articleId = await article.getId();
-            if (visitedArticles.indexOf(articleId) > -1) {
-                continue;
+    try {
+        while (!foundId) {
+            let articles = await driver.findElements(By.css("article"));
+    
+            for (let y = 0; y != articles.length; y++) {
+                let article = articles[y]; 
+                let articleId = await article.getId();
+                if (visitedArticles.indexOf(articleId) > -1) {
+                    continue;
+                }
+    
+                let innerTxt = await article.getAttribute("innerText");
+    
+                if (innerTxt.startsWith("Pinned Tweet")) {
+                    // check pinned tweet storage instead
+                    await notificationKiller(driver);
+    
+                    let artUrl = await getArticleUrl(article);
+                    let id = getId(artUrl);
+    
+                    fullPinned.push(id);
+    
+                    if (cache[url].pinned.indexOf(id) == -1) {
+                        twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
+                    }
+                } else {
+                    let artUrl = await getArticleUrl(article);
+                    let id = getId(artUrl);
+    
+                    if (cache[url].lastId != id) {
+                        cache[url].lastId = id;
+                        twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
+                    }
+    
+                    foundId = true;
+                    break;
+                }
             }
-
-            let innerTxt = await article.getAttribute("innerText");
-
-            if (innerTxt.startsWith("Pinned Tweet")) {
-                // check pinned tweet storage instead
-                await notificationKiller(driver);
-
-                let artUrl = await getArticleUrl(article);
-                let id = getId(artUrl);
-
-                fullPinned.push(id);
-
-                if (cache[url].pinned.indexOf(id) == -1) {
-                    twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
-                }
-            } else {
-                let artUrl = await getArticleUrl(article);
-                let id = getId(artUrl);
-
-                if (cache[url].lastId != id) {
-                    cache[url].lastId = id;
-                    twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
-                }
-
-                foundId = true;
-                break;
+    
+            if (!foundId) {
+                await driver.executeScript('arguments[0].scrollIntoView(true, {behavior:"instant"})', articles[articles.length - 1]);
+                await sleeper(500);
             }
         }
-
-        if (!foundId) {
-            await driver.executeScript('arguments[0].scrollIntoView(true, {behavior:"instant"})', articles[articles.length - 1]);
-            await sleeper(500);
-        }
+    
+        cache[url].pinned = fullPinned;
+    } catch (ex) {
+        log("Error occured in twitter JS for URL: " + url + " with exception: " + ex);
     }
-
-    cache[url].pinned = fullPinned;
-
+    
     await driver.close();
 
     await driver.quit();
