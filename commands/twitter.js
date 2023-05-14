@@ -413,15 +413,15 @@ let scrape = async function(url) {
     await sleeper(10000);
 
     await cleanup();
-
-    await postScrapeCleaner();
+    try {
+        await postScrapeCleaner();
+    } catch (ex) {
+        log("Failed to execute postScrapeCleaner with exception: " + ex);
+    }
 }
 
 let end = function() {
     if (tasks != null) {
-        Object.keys(tasks).forEach(i => {
-            tasks[i].stop = true;
-        });
         cache = null;
     }
 }

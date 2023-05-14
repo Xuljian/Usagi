@@ -267,9 +267,6 @@ let cleanupRepository = function() {
 
 exports.onClose = function(ignoreDB, forced, callback) {
     cleanupRepository();
-    if (loopers != null) {
-        loopers.forEach(looper => { looper.stop = true; });
-    }
     if (!ignoreDB)
         exportToFile(forced, callback);
     else

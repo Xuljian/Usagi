@@ -1,4 +1,9 @@
-const { sleeper } = require("./sleeper");
+const { Mutex } = require('async-mutex');
+const { sleeper } = require('./sleeper');
+
+let stopperMutex = new Mutex();
+
+let stoppers = [];
 
 /*
  * work is a function to do the work for
@@ -20,22 +25,39 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
     let initialComplete = false;
     let timeout = null;
     let stopper = {
-        stop: false
+        stop: false,
+        end: false
     }
-    let internalLooper = () => {
-        let interval = internal();
-        if (firstExecute && !initialComplete) {
-            interval = 0;
-            initialComplete = true;
+    stopperMutex.runExclusive(() => {
+        stoppers.push(stopper);
+    }).then(() => {
+        let internalLooper = () => {
+            let interval = internal();
+            if (firstExecute && !initialComplete) {
+                interval = 0;
+                initialComplete = true;
+            }
+    
+            timeout = setTimeout(async () => {
+                await work();
+                clearTimeout(timeout);
+                if (!stopper.stop)
+                    internalLooper();
+                else
+                    stopper.end = true;
+            }, interval)
         }
-
-        timeout = setTimeout(async () => {
-            await work();
-            clearTimeout(timeout);
-            if (!stopper.stop)
-                internalLooper();
-        }, interval)
-    }
-    internalLooper();
+        internalLooper();
+    })
     return stopper;
+}
+
+exports.end = async function() {
+    stoppers.forEach((stopper) => {
+        stopper.stop = true;
+    })
+
+    while (stoppers.findIndex((val) => !val.end) > -1) {
+        await sleeper(10000);
+    }
 }
