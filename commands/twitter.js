@@ -9,6 +9,8 @@ const { sleeper } = require('../utils/sleeper');
 const { timeoutChainer } = require('../utils/timeout-chainer');
 const { realTimeRepository } = require('../repository');
 
+const moment = require('moment');
+
 const { Mutex } = require('async-mutex');
 
 const restActions = require('../rest-actions');
@@ -356,6 +358,8 @@ let scrape = async function(url) {
 
     let fullPinned = [];
 
+    let startWait = moment();
+
     try {
         while (!foundId) {
             let articles = await driver.findElements(By.css("article"));
@@ -398,6 +402,10 @@ let scrape = async function(url) {
             if (!foundId) {
                 await driver.executeScript('arguments[0].scrollIntoView(true, {behavior:"instant"})', articles[articles.length - 1]);
                 await sleeper(500);
+                foundId = moment().diff(startWait) >= 180000;
+                if (foundId) {
+                    log("Issue in twitter JS for URL: " + url);
+                }
             }
         }
     
