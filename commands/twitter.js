@@ -174,7 +174,7 @@ let cleanup = async function() {
         try {
             await fs.rm(path, { force: true, recursive: true });
         } catch (ex) {
-            log("Unable to delete " + path + " with exception " + ex);
+            //log("Unable to delete " + path + " with exception " + ex);
         }
     }
 }
