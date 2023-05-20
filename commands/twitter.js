@@ -414,7 +414,6 @@ let scrape = async function(url) {
 
     await sleeper(10000);
 
-    //await cleanup();
     await deleteDir(userDataDir);
 
     try {
