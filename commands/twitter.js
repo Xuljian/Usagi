@@ -15,6 +15,7 @@ const { Mutex } = require('async-mutex');
 
 const restActions = require('../rest-actions');
 const { log } = require('../utils/logger');
+const { generateString } = require('../utils/common');
 
 let cache = {};
 
@@ -162,22 +163,11 @@ let getArticleUrl = async function(article) {
     return artUrl;
 }
 
-// Workaround for handling webdriver issue with temp files not deleted
-let cleanup = async function() {
-    let folders = tempfs.readdirSync(process.env.LOCALAPPDATA + "/temp")
-        .filter((folder) => {
-            return /scoped\_dir.*/.exec(folder) != null;
-        }).map((folder) => {
-            return process.env.LOCALAPPDATA + "/temp/" + folder;
-        });
-    
-    for (let x = 0; x != folders.length; x++) {
-        let path = folders[x];
-        try {
-            await fs.rm(path, { force: true, recursive: true });
-        } catch (ex) {
-            //log("Unable to delete " + path + " with exception " + ex);
-        }
+let deleteDir = async function(path) {
+    try {
+        await fs.rm(path, { force: true, recursive: true });
+    } catch (ex) {
+        log("Unable to delete " + path + " with exception " + ex);
     }
 }
 
@@ -337,9 +327,12 @@ exports.process = function(data, args) {
     return true;
 }
 
-
 let scrape = async function(url) {
     const chromeService = new chrome.ServiceBuilder(USAGI_CONSTANTS.CHROME_DRIVER_PATH);
+
+    const userDataDir = process.env.LOCALAPPDATA + "\\temp\\scoped_dir_" + generateString(10);
+    chromeOptions.addArguments("--user-data-dir=" + userDataDir);
+
     let driver = new Builder()
         .forBrowser('chrome')
         .setChromeOptions(chromeOptions)
@@ -421,7 +414,9 @@ let scrape = async function(url) {
 
     await sleeper(10000);
 
-    await cleanup();
+    //await cleanup();
+    await deleteDir(userDataDir);
+
     try {
         await postScrapeCleaner();
     } catch (ex) {
