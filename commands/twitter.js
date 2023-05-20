@@ -349,18 +349,19 @@ let scrape = async function(url) {
     await driver.get(url);
     await sleeper(USAGI_CONSTANTS.SCRAPE_WAIT_TIME * 1000);
 
-    await notificationKiller(driver);
-    await signOnKiller(driver);
-
-    let visitedArticles = [];
-
-    let foundId = false;
-
-    let fullPinned = [];
-
-    let startWait = moment();
 
     try {
+        await notificationKiller(driver);
+        await signOnKiller(driver);
+
+        let visitedArticles = [];
+
+        let foundId = false;
+
+        let fullPinned = [];
+
+        let startWait = moment();
+        
         while (!foundId) {
             let articles = await driver.findElements(By.css("article"));
     
