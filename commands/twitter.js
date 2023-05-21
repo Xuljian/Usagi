@@ -339,11 +339,10 @@ let scrape = async function(url) {
         .setChromeService(chromeService)
         .build();
 
-    await driver.get(url);
-    await sleeper(USAGI_CONSTANTS.SCRAPE_WAIT_TIME * 1000);
-
-
     try {
+        await driver.get(url);
+        await sleeper(USAGI_CONSTANTS.SCRAPE_WAIT_TIME * 1000);
+
         await notificationKiller(driver);
         await signOnKiller(driver);
 
