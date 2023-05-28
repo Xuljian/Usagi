@@ -123,15 +123,7 @@ let init = async function() {
         let urls = Object.keys(cache);
         for (let x = 0; x != urls.length; x++) {
             let url = urls[x];
-            if (cache[url].pinned == null) {
-                cache[url].pinned = [];
-            }
-
-            let chainer = timeoutChainer(async () => {
-                await scrape(url);
-            }, 300000, true);
-            
-            tasks[url] = chainer;
+            registerTasks(url);
         }
     }, 1000);
 }
@@ -153,7 +145,7 @@ let registerTasks = function(url) {
 
     let chainer = timeoutChainer(async () => {
         await scrape(url);
-    }, 60000, true);
+    }, 300000, true);
     tasks[url] = chainer;
 }
 
@@ -393,10 +385,16 @@ let scrape = async function(url) {
                         foundId = true;
                     }
 
+                    // new scrape. So immediately return 1 entry
+                    if (cache[url].lastId == null) {
+                        foundId = true;
+                    }
+
                     if (foundId || searchCount >= 3) {
-                        for (let x = 0; x < unseenTweets.length; x++) {
-                            let tweet = unseenTweets.pop();
+                        let tweet = unseenTweets.pop();
+                        while(tweet != null) {
                             twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: tweet});
+                            tweet = unseenTweets.pop();
                         }
                         foundId = true;
                         cache[url].lastId = newLastId;
