@@ -397,7 +397,9 @@ let scrape = async function(url) {
                             tweet = unseenTweets.pop();
                         }
                         foundId = true;
-                        cache[url].lastId = newLastId;
+                        if (set && newLastId != null) {
+                            cache[url].lastId = newLastId;
+                        }
                         break;
                     }
                 }
