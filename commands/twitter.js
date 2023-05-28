@@ -355,6 +355,8 @@ let scrape = async function(url) {
         let set = false;
         let searchCount = 0;
 
+        let newLastId = null;
+
         let startWait = moment();
         
         while (!foundId) {
@@ -382,7 +384,7 @@ let scrape = async function(url) {
                 } else {
                     if (cache[url].lastId != id) {
                         if (!set) {
-                            cache[url].lastId = id;
+                            newLastId = id;
                             set = true;
                         }
                         unseenTweets.push(artUrl);
@@ -397,6 +399,7 @@ let scrape = async function(url) {
                             twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: tweet});
                         }
                         foundId = true;
+                        cache[url].lastId = newLastId;
                         break;
                     }
                 }
