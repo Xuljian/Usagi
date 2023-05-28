@@ -351,44 +351,54 @@ let scrape = async function(url) {
         let foundId = false;
 
         let fullPinned = [];
+        let unseenTweets = [];
+        let set = false;
+        let searchCount = 0;
 
         let startWait = moment();
         
         while (!foundId) {
             let articles = await driver.findElements(By.css("article"));
-    
             for (let y = 0; y != articles.length; y++) {
                 let article = articles[y]; 
-                let articleId = await article.getId();
-                if (visitedArticles.indexOf(articleId) > -1) {
+    
+                let artUrl = await getArticleUrl(article);
+                let id = getId(artUrl);
+                if (visitedArticles.indexOf(artUrl) > -1) {
                     continue;
                 }
-    
+                visitedArticles.push(artUrl);
+
                 let innerTxt = await article.getAttribute("innerText");
+                await notificationKiller(driver);
     
                 if (innerTxt.startsWith("Pinned Tweet")) {
                     // check pinned tweet storage instead
-                    await notificationKiller(driver);
-    
-                    let artUrl = await getArticleUrl(article);
-                    let id = getId(artUrl);
-    
                     fullPinned.push(id);
     
                     if (cache[url].pinned.indexOf(id) == -1) {
                         twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
                     }
                 } else {
-                    let artUrl = await getArticleUrl(article);
-                    let id = getId(artUrl);
-    
                     if (cache[url].lastId != id) {
-                        cache[url].lastId = id;
-                        twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: artUrl});
+                        if (!set) {
+                            cache[url].lastId = id;
+                            set = true;
+                        }
+                        unseenTweets.push(artUrl);
+                        searchCount++;
+                    } else {
+                        foundId = true;
                     }
-    
-                    foundId = true;
-                    break;
+
+                    if (foundId || searchCount >= 3) {
+                        for (let x = 0; x < unseenTweets.length; x++) {
+                            let tweet = unseenTweets.pop();
+                            twitterUrlObjs.push({twitterUrlObj: cache[url], artUrl: tweet});
+                        }
+                        foundId = true;
+                        break;
+                    }
                 }
             }
     
