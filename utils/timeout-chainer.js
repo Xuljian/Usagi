@@ -26,7 +26,8 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
     let timeout = null;
     let stopper = {
         stop: false,
-        end: false
+        end: false,
+        started: false
     }
     stopperMutex.runExclusive(() => {
         stoppers.push(stopper);
@@ -39,9 +40,14 @@ exports.timeoutChainer = function (work, intervals, firstExecute) {
             }
     
             timeout = setTimeout(async () => {
+                if (stopper.stop) {
+                    stopper.end = true;
+                    return;
+                }
+                stopper.started = true;
                 await work();
-                clearTimeout(timeout);
-                if (!stopper.stop)
+                stopper.started = false;
+                if (!stopper.stop) 
                     internalLooper();
                 else
                     stopper.end = true;
@@ -57,7 +63,7 @@ exports.end = async function() {
         stopper.stop = true;
     })
 
-    while (stoppers.findIndex((val) => !val.end) > -1) {
+    while (stoppers.findIndex((val) => !val.end && val.started) > -1) {
         await sleeper(10000);
     }
 }
