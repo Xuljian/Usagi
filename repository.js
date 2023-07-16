@@ -13,25 +13,6 @@ var hasChanges = true;
 
 let lastExport = null;
 
-// twitterModule field
-/*
- * its a dynamic object that when created it is in a form as below
- * {
- *     twitter-url: {
- *         server-id: {
- *             channelIds: []
- *         },
- *         pinned: [ids...]
- *         lastId: ""
- *     }
- * }
- * server-id is the id of the server in discord
- * channelIds are the array of channel in the server in discord
- * twitter-url refers to the url that the server wants to follow
- * - pinned are the tweet ids that are pinned
- * - lastId is the id of the latest tweet
- */
-
 let realTimeRepository = {
     guilds: {},
     users: {},
@@ -41,7 +22,6 @@ let realTimeRepository = {
     fileInit: false,
     hasRegisteredCommand: false,
     commandVersion: null,
-    twitterModule: {},
     debug: false,
     channelIgnore: [],
     guildIgnore: [],
@@ -99,7 +79,6 @@ let getEsentialData = function() {
         fileInit: realTimeRepository.fileInit,
         hasRegisteredCommand: realTimeRepository.hasRegisteredCommand,
         commandVersion: realTimeRepository.commandVersion,
-        twitterModule: realTimeRepository.twitterModule,
         channelIgnore: realTimeRepository.channelIgnore,
         emojiChannel: realTimeRepository.emojiChannel,
         guildIgnore: realTimeRepository.guildIgnore,
@@ -212,7 +191,6 @@ var importFromFile = function () {
         realTimeRepository.archiveListenChannel = repo.archiveListenChannel || {};
         realTimeRepository.hasRegisteredCommand = repo.hasRegisteredCommand;
         realTimeRepository.commandVersion = repo.commandVersion;
-        realTimeRepository.twitterModule = repo.twitterModule || {};
         realTimeRepository.jobs = repo.jobs || [];
         realTimeRepository.fileInit = true;
         realTimeRepository.guildIgnore = repo.guildIgnore;
