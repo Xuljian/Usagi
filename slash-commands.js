@@ -7,7 +7,7 @@ const { USAGI_INTERACTIONS } = require('./interactions');
 
 const { log } = require('./utils/logger');
 
-let version = "1.0.3";
+let version = "1.0.4";
 
 const AVAILABLE_SLASH_COMMANDS = Object.keys(USAGI_INTERACTIONS);
 exports.AVAILABLE_SLASH_COMMANDS = AVAILABLE_SLASH_COMMANDS;

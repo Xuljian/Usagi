@@ -29,6 +29,8 @@ exports.process = function(data) {
         }
     })
 
+    actualMessage = actualMessage || "No emojis statistic counted yet, try again next time.";
+
     restActions.sendMessage({
         interactionId: data.id,
         interactionToken: data.token,
