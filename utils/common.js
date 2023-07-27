@@ -5,6 +5,8 @@ exports.getTag = function(authorId) {
     return `${authorId ? '<@!' + authorId + '>' : ''}`;
 }
 
+exports.emojiRegex = /<(:[a-zA-Z0-9_-]+:[a-zA-Z0-9]+)>/g
+
 exports.generateString = function(length) {
     let str = "";
     let internalLength = length || 6;

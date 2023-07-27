@@ -22,6 +22,7 @@ let realTimeRepository = {
     fileInit: false,
     hasRegisteredCommand: false,
     commandVersion: null,
+    emojiUsage: null,
     debug: false,
     channelIgnore: [],
     guildIgnore: [],
@@ -77,6 +78,7 @@ let getEsentialData = function() {
         bots: realTimeRepository.bots,
         hasInit: realTimeRepository.hasInit,
         fileInit: realTimeRepository.fileInit,
+        emojiUsage: realTimeRepository.emojiUsage,
         hasRegisteredCommand: realTimeRepository.hasRegisteredCommand,
         commandVersion: realTimeRepository.commandVersion,
         channelIgnore: realTimeRepository.channelIgnore,
@@ -185,6 +187,7 @@ var importFromFile = function () {
         realTimeRepository.guilds = repo.guilds;
         realTimeRepository.channels = repo.channels;
         realTimeRepository.users = repo.users;
+        realTimeRepository.emojiUsage = repo.emojiUsage || {};
         realTimeRepository.channelIgnore = repo.channelIgnore;
         realTimeRepository.emojiChannel = repo.emojiChannel || [];
         realTimeRepository.archiveChannel = repo.archiveChannel || {};
@@ -230,6 +233,8 @@ let checkDebug = async function() {
         }
     }
 }
+
+checkDebug();
 
 let cleanupRepository = function() {
     delete realTimeRepository.registeredJobs;

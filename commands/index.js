@@ -1,5 +1,6 @@
 const tempRepositoryFunc = require('../repository');
 const realTimeRepository = tempRepositoryFunc.realTimeRepository;
+const { log } = require('../utils/logger');
 
 const fs = require('fs');
 let USAGI_COMMANDS = {
@@ -26,7 +27,11 @@ fs.readdirSync(__dirname)
     }).map(file => {
         return file.substring(0, file.indexOf('.js'));
     }).forEach(file => {
-        USAGI_COMMANDS[file] = require(__dirname + '/' + file + '.js');
+        try {
+            USAGI_COMMANDS[file] = require(__dirname + '/' + file + '.js');
+        } catch {
+            log("Unable to load command file " + file);
+        }
     })
 
 let end = function() {

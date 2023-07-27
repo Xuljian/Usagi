@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { log } = require('../utils/logger');
 
 let USAGI_INTERACTIONS = {}
 
@@ -9,7 +10,11 @@ fs.readdirSync(__dirname)
     }).map(file => {
         return file.substring(0, file.indexOf('.js'));
     }).forEach(file => {
-        USAGI_INTERACTIONS[file] = require(__dirname + '/' + file + '.js');
+        try {
+            USAGI_INTERACTIONS[file] = require(__dirname + '/' + file + '.js');
+        } catch {
+            log("Unable to load interaction file " + file);
+        }
     })
 
 exports.USAGI_INTERACTIONS = USAGI_INTERACTIONS;

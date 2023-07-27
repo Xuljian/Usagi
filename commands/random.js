@@ -12,7 +12,18 @@ exports.process = function(data, args) {
             interactionToken: data.token,
             guildId: data.guild_id,
             channelId: data.channel_id,
-            message: `${getTag(data.author?.id)} The command is "${prefix}random <min> <max>" where min and max are inclusive. It will not work if both are not given`.trim()
+            embed: {
+                color: usagiConstants.BOT_DATA.EMBED_COLOR_HEX,
+                description: '**Using Random\n\n**' +
+                            `\`\`${prefix}random <min> <max>\`\`\n\n` +
+                            'This command is for generating a random number where min and max are inclusive.\n' +
+                            'It will not work if both are not given!\n' +
+                            '<min> the minimum number that I can roll.\n' +
+                            '<max> the maximum number that I can roll.\n' +
+                            'Again, they are both inclusive\n\n' +
+                            'Example.\n' + 
+                            `\`\`\`${prefix}random 0 3\`\`\``
+            }
         });
         return true;
     } else if (/\d+/.exec(splitArgs[0]) != null && /\d+/.exec(splitArgs[1]) != null) {

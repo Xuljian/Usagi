@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { log } = require('../utils/logger');
 let EVENT_TYPES = {};
 
 // .js1 basically says that the event-type file is not ready
@@ -8,7 +9,11 @@ fs.readdirSync(__dirname)
     }).map(file => {
         return file.substring(0, file.indexOf('.js'));
     }).forEach(file => {
-        EVENT_TYPES[file] = require(__dirname + '/' + file + '.js');
+        try {
+            EVENT_TYPES[file] = require(__dirname + '/' + file + '.js');
+        } catch {
+            log("Unable to load event-type file " + file);
+        }
     })
 
 exports.EVENT_TYPES = EVENT_TYPES;
