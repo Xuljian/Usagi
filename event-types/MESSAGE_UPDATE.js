@@ -2,6 +2,7 @@ const tempRepositoryFunc = require('../repository');
 var { messageLogs } = require('../message-logs-storage');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 const restActions = require('../rest-actions');
+const { processEmojiStatistic } = require('./MESSAGE_REACTION_ADD');
 
 exports.process = function(data) {
     var usableData = data.d;
@@ -18,6 +19,8 @@ exports.process = function(data) {
         messageLogs.splice(messageIndex, 1);
         return;
     }
+
+    processEmojiStatistic(data);
 
     let description = '**Edited message\n\n**' +
                         `Message: ${message.content}\n` +

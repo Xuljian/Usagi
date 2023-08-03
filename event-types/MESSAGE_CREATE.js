@@ -10,7 +10,7 @@ const { USAGI_COMMANDS } = require('../commands');
 const { validMimes } = require('../utils/common');
 const fileType = require('file-type');
 
-const { processMessage } = require('./MESSAGE_REACTION_ADD');
+const { processEmojiStatistic } = require('./MESSAGE_REACTION_ADD');
 
 const getTag = require('../utils/common').getTag;
 
@@ -26,7 +26,7 @@ const INVALID_MESSAGES = [
 exports.process = async function(data) {
     let usableData = data.d;
 
-    processMessage(data);
+    processEmojiStatistic(data);
                 
     if (usableData.interaction != null) {
         // nothing to log for interaction

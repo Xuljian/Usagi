@@ -16,7 +16,7 @@ exports.process = function(data) {
     incrementEmoji(usableData.guild_id, `:${usableData.emoji.name}:${usableData.emoji.id}`);
 }
 
-exports.processMessage = function(data) {
+exports.processEmojiStatistic = function(data) {
     let usableData = data.d;
     if (usableData.author?.id == USAGI_CONSTANTS.BOT_DATA.CLIENT_ID) {
         return;
@@ -24,17 +24,19 @@ exports.processMessage = function(data) {
 
     let guildId = usableData.guild_id;
     if (usableData.content != null) {
-        regRes = [...usableData.content.matchAll(emojiRegex)];
+        regRes = [...usableData.content.matchAll(emojiRegex)].map((reg) => {
+            return reg[1];
+        })
+        regRes = new Set([...regRes]);
     }
 
     if (regRes == null || regRes.length == 0) {
         return;
     }
 
-    for (let i = 0; i != regRes.length; i++) {
-        let emoji = regRes[i][1];
+    regRes.forEach((emoji) => {
         incrementEmoji(guildId, emoji);
-    }
+    });
 }
 
 const incrementEmoji = function(guildId, emoji) {
