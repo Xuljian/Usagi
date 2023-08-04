@@ -1,4 +1,5 @@
 const restActions = require('../rest-actions');
+const { log } = require('../utils/logger');
 const getTag = require('../utils/common').getTag;
 const pso2Modules = require('../utils/pso2/pso2-modules');
 const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
@@ -83,6 +84,11 @@ exports.process = function(data, args, exact) {
         });
     }
     return true;
+}
+
+exports.end = function() {
+    log("Ending pso2 related modules");
+    pso2Modules.endPSO2();
 }
 
 let getPSO2SearchDescription = function(exact) {

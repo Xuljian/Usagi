@@ -4,6 +4,7 @@ const usagiConstants = require("../usagi.constants").USAGI_CONSTANTS;
 const prefix = usagiConstants.BOT_DATA.COMMAND_PREFIX;
 
 const cronJob = require('../utils/cron-job');
+const { log } = require('../utils/logger');
 
 exports.process = function(data, args) {
     if (args == null || args === '' || args === '?') {
@@ -187,4 +188,9 @@ exports.process = function(data, args) {
         }
     }
     return true;
+}
+
+exports.end = function() {
+    log("Ending cron job");
+    cronJob.haltCron();
 }
