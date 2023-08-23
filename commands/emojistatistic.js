@@ -56,7 +56,11 @@ exports.process = function(data, args) {
     let guild = realTimeRepository.guilds[guildId];
     let actualMessage = null;
 
-    Object.keys(realTimeRepository.emojiUsage[guildId]).forEach(key => {
+    Object.keys(realTimeRepository.emojiUsage[guildId])
+    .sort(((key1, key2) => {
+        return realTimeRepository.emojiUsage[guildId][key2] - realTimeRepository.emojiUsage[guildId][key1]
+    }))
+    .forEach(key => {
         let reg = /:.*:(.*)/
         let res = reg.exec(key);
         if (res == null) {
