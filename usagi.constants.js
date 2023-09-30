@@ -6,6 +6,7 @@ exports.USAGI_CONSTANTS = {
         COMMAND_PREFIX: "#!"
     },
 
+    OWNER_USER_ID: null,
     MAX_IMAGE_UPLOAD_SIZE: 262144,
     BOT_DUMP_PATH: '',
     CHROME_DRIVER_PATH: '',
