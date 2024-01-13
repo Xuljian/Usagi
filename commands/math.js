@@ -55,6 +55,11 @@ exports.process = function(data, args) {
             });
             return true;
         }
+
+        if (args.indexOf('*') > -1) {
+            args = args.split('*').join('\\*');
+        }
+
         restActions.sendMessage({
             interactionId: data.id,
             interactionToken: data.token,
