@@ -8,7 +8,7 @@
         "moment": "^2.29.4",
         "node-fetch": "2.6.7",
         "selenium-webdriver": "^4.9.0",
-        "sharp": "^0.31.3",
+        "sharp": ">=0.32.6",
         "util.promisify": "^1.1.1",
         "ws": "^8.12.0",
         "zlib": "^1.0.5"
